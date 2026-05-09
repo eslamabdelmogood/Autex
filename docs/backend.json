@@ -1,0 +1,44 @@
+
+{
+  "entities": {
+    "SensorReading": {
+      "title": "Sensor Reading",
+      "description": "A single telemetry data point from an industrial sensor.",
+      "type": "object",
+      "properties": {
+        "sensorId": {
+          "type": "string",
+          "description": "Identifier for the sensor."
+        },
+        "value": {
+          "type": "number",
+          "description": "The numeric value recorded."
+        },
+        "timestamp": {
+          "type": "number",
+          "description": "Unix timestamp of the reading."
+        },
+        "machineId": {
+          "type": "string",
+          "description": "Machine associated with this reading."
+        }
+      },
+      "required": [
+        "sensorId",
+        "value",
+        "timestamp"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "google.com"
+    ]
+  },
+  "firestore": {
+    "/readings/{readingId}": {
+      "schema": "SensorReading",
+      "description": "Collection of real-time and historical sensor telemetry."
+    }
+  }
+}

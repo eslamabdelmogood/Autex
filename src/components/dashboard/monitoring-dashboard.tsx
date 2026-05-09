@@ -1,6 +1,7 @@
+
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { DashboardSidebar } from './dashboard-sidebar';
 import { ConnectionStatus } from './connection-status';
@@ -13,6 +14,8 @@ import { Activity, Bell, Settings, Gauge } from 'lucide-react';
 import { detectAndClassifyAnomalies, DetectAndClassifyAnomaliesOutput } from '@/ai/flows/detect-and-classify-anomalies';
 import { generateAnomalyExplanation, AnomalyExplanationOutput } from '@/ai/flows/generate-anomaly-explanation';
 import { useToast } from '@/hooks/use-toast';
+import { useFirestore, useCollection } from '@/firebase';
+import { collection, addDoc, query, orderBy, limit } from 'firebase/firestore';
 
 export type SensorReading = {
   timestamp: number;
@@ -26,20 +29,48 @@ export type AnomalyAlert = DetectAndClassifyAnomaliesOutput & {
 };
 
 export function MonitoringDashboard() {
-  const [readings, setReadings] = useState<SensorReading[]>([]);
+  const [localReadings, setLocalReadings] = useState<SensorReading[]>([]);
   const [alerts, setAlerts] = useState<AnomalyAlert[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [thresholds, setThresholds] = useState({ min: 20, max: 80 });
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  
+  const db = useFirestore();
   const { toast } = useToast();
+
+  // Fetch recent historical readings from Firebase
+  const readingsQuery = useMemo(() => {
+    if (!db) return null;
+    return query(collection(db, 'readings'), orderBy('timestamp', 'desc'), limit(50));
+  }, [db]);
+
+  const { data: dbReadings, loading: readingsLoading } = useCollection(readingsQuery);
+
+  // Merge DB readings with local state for the chart
+  const allReadings = useMemo(() => {
+    const historical = (dbReadings || []).map(doc => ({
+      timestamp: doc.timestamp,
+      value: doc.value
+    })).sort((a, b) => a.timestamp - b.timestamp);
+    
+    return historical;
+  }, [dbReadings]);
 
   const handleNewReading = useCallback(async (value: number) => {
     const timestamp = Date.now();
-    const newReading = { timestamp, value };
-    
-    setReadings(prev => [...prev.slice(-49), newReading]);
+    const readingData = {
+      sensorId: 'vibration-01',
+      value,
+      timestamp,
+      machineId: 'CNC-MILL-01'
+    };
 
-    // Simple heuristic or threshold check to trigger AI analysis
+    // 1. Persist to Firebase
+    if (db) {
+      addDoc(collection(db, 'readings'), readingData);
+    }
+
+    // 2. Anomaly Detection
     if (value > thresholds.max || value < thresholds.min) {
       setIsAnalyzing(true);
       try {
@@ -48,7 +79,7 @@ export function MonitoringDashboard() {
           value,
           timestamp,
           thresholds,
-          historicalContext: readings.slice(-5)
+          historicalContext: allReadings.slice(-5)
         });
 
         if (detectionResult.isAnomaly) {
@@ -57,7 +88,7 @@ export function MonitoringDashboard() {
             currentSensorReadings: { vibration: value },
             machineType: 'CNC Milling Machine',
             operationalContext: 'High-speed finishing pass',
-            historicalDataSummary: `Last 5 readings: ${readings.slice(-5).map(r => r.value).join(', ')}`
+            historicalDataSummary: `Recent variance detected: ${allReadings.slice(-5).map(r => r.value.toFixed(1)).join(', ')}`
           });
 
           const newAlert: AnomalyAlert = {
@@ -71,8 +102,8 @@ export function MonitoringDashboard() {
           
           toast({
             variant: "destructive",
-            title: `Anomaly Detected: ${detectionResult.anomalyType}`,
-            description: `Severity: ${detectionResult.severity.toUpperCase()}. ${explanation.recommendedImmediateAction}`,
+            title: `CRITICAL: ${detectionResult.anomalyType}`,
+            description: explanation.recommendedImmediateAction,
           });
         }
       } catch (error) {
@@ -81,7 +112,7 @@ export function MonitoringDashboard() {
         setIsAnalyzing(false);
       }
     }
-  }, [readings, thresholds, toast]);
+  }, [allReadings, thresholds, db, toast]);
 
   return (
     <SidebarProvider>
@@ -101,7 +132,11 @@ export function MonitoringDashboard() {
           </header>
 
           <main className="flex-1 overflow-y-auto p-6">
-            <KpiCards readings={readings} isAnalyzing={isAnalyzing} activeAlertsCount={alerts.filter(a => a.severity !== 'none').length} />
+            <KpiCards 
+              readings={allReadings} 
+              isAnalyzing={isAnalyzing || readingsLoading} 
+              activeAlertsCount={alerts.filter(a => a.severity !== 'none').length} 
+            />
 
             <Tabs defaultValue="monitor" className="mt-8 space-y-6">
               <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
@@ -117,7 +152,7 @@ export function MonitoringDashboard() {
               </TabsList>
 
               <TabsContent value="monitor" className="space-y-6">
-                <LiveSensorChart readings={readings} thresholds={thresholds} />
+                <LiveSensorChart readings={allReadings} thresholds={thresholds} />
               </TabsContent>
 
               <TabsContent value="alerts">

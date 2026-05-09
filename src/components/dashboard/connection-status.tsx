@@ -1,9 +1,11 @@
+
 "use client";
 
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Wifi, WifiOff, Link as LinkIcon, Unlink } from 'lucide-react';
+import { WifiOff, Link as LinkIcon, Unlink, AlertCircle } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface ConnectionStatusProps {
   isConnected: boolean;
@@ -12,43 +14,95 @@ interface ConnectionStatusProps {
 }
 
 export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading }: ConnectionStatusProps) {
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [port, setPort] = useState<any>(null);
+  const readerRef = useRef<any>(null);
+  const { toast } = useToast();
 
-  const startMonitoring = async () => {
-    // In a real environment, we'd use navigator.serial.requestPort() here.
-    // Since we're in a browser demo/scaffold, we'll simulate the data stream
-    // but check for Web Serial support for production readiness.
-    
-    if (typeof window !== 'undefined' && 'serial' in navigator) {
-      console.log("Web Serial is supported. Attempting to connect...");
-      // Implementation for real serial would go here
+  const connectSerial = async () => {
+    if (!('serial' in navigator)) {
+      toast({
+        variant: "destructive",
+        title: "Browser Unsupported",
+        description: "Your browser does not support the Web Serial API. Try Chrome or Edge.",
+      });
+      return;
     }
 
-    onToggleConnection(true);
+    try {
+      const selectedPort = await (navigator as any).serial.requestPort();
+      await selectedPort.open({ baudRate: 9600 });
+      setPort(selectedPort);
+      onToggleConnection(true);
+      
+      readFromPort(selectedPort);
+      
+      toast({
+        title: "Hardware Connected",
+        description: "Receiving live telemetry from Serial Port.",
+      });
+    } catch (err) {
+      console.error("Serial connection failed:", err);
+      toast({
+        variant: "destructive",
+        title: "Connection Failed",
+        description: "Could not establish link with serial device.",
+      });
+    }
   };
 
-  const stopMonitoring = () => {
+  const readFromPort = async (selectedPort: any) => {
+    const textDecoder = new TextDecoderStream();
+    const readableStreamClosed = selectedPort.readable.pipeTo(textDecoder.writable);
+    const reader = textDecoder.readable.getReader();
+    readerRef.current = reader;
+
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        if (value) {
+          // Expecting CSV or single numbers. Parsing logic for industrial streams:
+          const numericValue = parseFloat(value.trim());
+          if (!isNaN(numericValue)) {
+            onNewReading(numericValue);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Read error:", error);
+    } finally {
+      reader.releaseLock();
+    }
+  };
+
+  const disconnectSerial = async () => {
+    if (readerRef.current) {
+      await readerRef.current.cancel();
+    }
+    if (port) {
+      await port.close();
+    }
+    setPort(null);
     onToggleConnection(false);
+    toast({
+      title: "Device Disconnected",
+      description: "Sensor stream has been stopped.",
+    });
   };
 
+  // Simulated fallback for development if no device is connected
   useEffect(() => {
-    if (isConnected) {
-      intervalRef.current = setInterval(() => {
-        // Generate random industrial sensor-like data (e.g., vibration m/s^2)
-        // Usually around 40-50, spikes to 90+ are anomalies
+    let interval: NodeJS.Timeout;
+    if (isConnected && !port) {
+      interval = setInterval(() => {
         const base = 45;
         const noise = (Math.random() - 0.5) * 10;
-        const anomalyTrigger = Math.random() > 0.95 ? 40 * Math.random() : 0;
+        const anomalyTrigger = Math.random() > 0.98 ? 60 * Math.random() : 0;
         onNewReading(base + noise + anomalyTrigger);
       }, 1000);
-    } else {
-      if (intervalRef.current) clearInterval(intervalRef.current);
     }
-
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [isConnected, onNewReading]);
+    return () => clearInterval(interval);
+  }, [isConnected, port, onNewReading]);
 
   return (
     <div className="flex items-center gap-4">
@@ -59,12 +113,12 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
-            CONNECTED
+            {port ? 'HARDWARE ACTIVE' : 'SIMULATED'}
           </Badge>
         ) : (
           <Badge variant="secondary" className="gap-1.5 py-1 px-3">
             <WifiOff className="h-3.5 w-3.5" />
-            DISCONNECTED
+            STANDBY
           </Badge>
         )}
       </div>
@@ -74,7 +128,7 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
           variant="outline" 
           size="sm" 
           className="gap-2 border-destructive/50 hover:bg-destructive/10 text-destructive"
-          onClick={stopMonitoring}
+          onClick={disconnectSerial}
         >
           <Unlink className="h-4 w-4" />
           Disconnect
@@ -84,10 +138,10 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
           variant="default" 
           size="sm" 
           className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
-          onClick={startMonitoring}
+          onClick={connectSerial}
         >
           <LinkIcon className="h-4 w-4" />
-          Connect Machine
+          Connect Hardware
         </Button>
       )}
     </div>
