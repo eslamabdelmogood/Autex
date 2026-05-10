@@ -38,6 +38,7 @@ export type AnomalyAlert = DetectAndClassifyAnomaliesOutput & {
 
 const MAX_RETRIES = 3;
 const EDGE_BUFFER_SIZE = 100;
+const MIN_AI_INTERVAL = 60000; // One minute between each Gemini call
 
 export function MonitoringDashboard() {
   const [alerts, setAlerts] = useState<AnomalyAlert[]>([]);
@@ -49,6 +50,7 @@ export function MonitoringDashboard() {
   const isOfflineMode = useRef(false);
   const classifierRef = useRef<any>(null);
   const vibrationBuffer = useRef<number[]>([]);
+  const lastAiCallTimestamp = useRef(0);
   
   const db = useFirestore();
   const { toast } = useToast();
@@ -158,32 +160,58 @@ export function MonitoringDashboard() {
           
           // If a fault is detected with high confidence (e.g., Bearing Wear > 0.8)
           if (results.classification && results.classification.bearing_wear > 0.8) {
-            setIsAnalyzing(true);
-            const explanationResult = await generateAnomalyExplanation({
-              vibrationValue: value,
-              anomalyDetails: "Bearing Wear Detected by Edge AI",
-              machineType: 'CNC Milling Machine'
-            });
+            const now = Date.now();
+            
+            if (now - lastAiCallTimestamp.current > MIN_AI_INTERVAL) {
+              console.log("🚀 Edge AI detected fault. Escalating to Gemini for maintenance plan...");
+              setIsAnalyzing(true);
+              lastAiCallTimestamp.current = now;
 
-            const newAlert: AnomalyAlert = {
-              isAnomaly: true,
-              anomalyType: "Bearing Wear (Local AI)",
-              classification: "Component Fatigue",
-              severity: "high",
-              recommendation: explanationResult.recommendation,
-              id: crypto.randomUUID(),
-              timestamp,
-              advice: explanationResult.recommendation,
-              part_details: explanationResult.part_details
-            };
+              const explanationResult = await generateAnomalyExplanation({
+                vibrationValue: value,
+                anomalyDetails: "Bearing Wear Detected by Edge AI",
+                machineType: 'CNC Milling Machine'
+              });
 
-            setAlerts(prev => [newAlert, ...prev]);
-            toast({
-              variant: "destructive",
-              title: "EDGE AI ALERT: Bearing Wear",
-              description: explanationResult.recommendation,
-            });
-            setIsAnalyzing(false);
+              const newAlert: AnomalyAlert = {
+                isAnomaly: true,
+                anomalyType: "Bearing Wear (Local AI)",
+                classification: "Component Fatigue",
+                severity: "high",
+                recommendation: explanationResult.recommendation,
+                id: crypto.randomUUID(),
+                timestamp,
+                advice: explanationResult.recommendation,
+                part_details: explanationResult.part_details
+              };
+
+              setAlerts(prev => [newAlert, ...prev]);
+              toast({
+                variant: "destructive",
+                title: "EDGE AI ALERT: Bearing Wear",
+                description: explanationResult.recommendation,
+              });
+              setIsAnalyzing(false);
+            } else {
+              console.log("🛡️ Edge AI is handling monitoring. Cloud AI is on standby to save quota.");
+              
+              const localAlert: AnomalyAlert = {
+                isAnomaly: true,
+                anomalyType: "Bearing Wear (Local Edge AI)",
+                classification: "Pending Technical Audit",
+                severity: "high",
+                recommendation: "Edge AI is handling monitoring. Cloud AI is on standby to save resources.",
+                id: crypto.randomUUID(),
+                timestamp,
+                advice: "Machine exhibiting patterns of bearing fatigue. Cooldown active for Cloud diagnostics."
+              };
+              
+              setAlerts(prev => [localAlert, ...prev]);
+              toast({
+                title: "Local Edge AI Detection",
+                description: "Bearing Wear (High Confidence). Cloud AI is on standby.",
+              });
+            }
           }
         } catch (err) {
           console.error("Local inference failed:", err);
@@ -195,42 +223,48 @@ export function MonitoringDashboard() {
 
     // 4. Threshold Trigger Logic (Cloud AI Fallback/Verification)
     if (value > thresholds.max || value < thresholds.min) {
-      setIsAnalyzing(true);
-      try {
-        const detectionResult = await detectAndClassifyAnomalies({
-          sensorId: 'vibration-01',
-          value,
-          timestamp,
-          thresholds,
-          historicalContext: allReadings.slice(-5)
-        });
-
-        if (detectionResult.isAnomaly) {
-          const explanationResult: AnomalyExplanationOutput = await generateAnomalyExplanation({
-            vibrationValue: value,
-            anomalyDetails: detectionResult.anomalyType || 'Excessive Vibration',
-            machineType: 'CNC Milling Machine'
-          });
-
-          const newAlert: AnomalyAlert = {
-            ...detectionResult,
-            id: crypto.randomUUID(),
+      const now = Date.now();
+      if (now - lastAiCallTimestamp.current > MIN_AI_INTERVAL) {
+        setIsAnalyzing(true);
+        lastAiCallTimestamp.current = now;
+        try {
+          const detectionResult = await detectAndClassifyAnomalies({
+            sensorId: 'vibration-01',
+            value,
             timestamp,
-            advice: explanationResult.recommendation,
-            part_details: explanationResult.part_details
-          };
-
-          setAlerts(prev => [newAlert, ...prev]);
-          toast({
-            variant: "destructive",
-            title: `${explanationResult.status.toUpperCase()}: ${detectionResult.anomalyType}`,
-            description: explanationResult.recommendation,
+            thresholds,
+            historicalContext: allReadings.slice(-5)
           });
+
+          if (detectionResult.isAnomaly) {
+            const explanationResult: AnomalyExplanationOutput = await generateAnomalyExplanation({
+              vibrationValue: value,
+              anomalyDetails: detectionResult.anomalyType || 'Excessive Vibration',
+              machineType: 'CNC Milling Machine'
+            });
+
+            const newAlert: AnomalyAlert = {
+              ...detectionResult,
+              id: crypto.randomUUID(),
+              timestamp,
+              advice: explanationResult.recommendation,
+              part_details: explanationResult.part_details
+            };
+
+            setAlerts(prev => [newAlert, ...prev]);
+            toast({
+              variant: "destructive",
+              title: `${explanationResult.status.toUpperCase()}: ${detectionResult.anomalyType}`,
+              description: explanationResult.recommendation,
+            });
+          }
+        } catch (error) {
+          console.error("An error occurred during AI analysis:", error);
+        } finally {
+          setIsAnalyzing(false);
         }
-      } catch (error) {
-        console.error("An error occurred during AI analysis:", error);
-      } finally {
-        setIsAnalyzing(false);
+      } else {
+        console.log("🛡️ High vibration detected. Cooldown active for Cloud AI.");
       }
     }
   }, [allReadings, thresholds, db, toast, sendToOneM2M]);
