@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { DashboardSidebar } from './dashboard-sidebar';
 import { ConnectionStatus } from './connection-status';
@@ -46,9 +46,36 @@ export function MonitoringDashboard() {
   
   const retryCount = useRef(0);
   const isOfflineMode = useRef(false);
+  const classifierRef = useRef<any>(null);
   
   const db = useFirestore();
   const { toast } = useToast();
+
+  // Load Edge Impulse Model
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = '/edge-impulse-standalone.js';
+    script.async = true;
+    script.onload = async () => {
+      try {
+        if ((window as any).EdgeImpulseClassifier) {
+          const classifier = new (window as any).EdgeImpulseClassifier();
+          await classifier.init();
+          classifierRef.current = classifier;
+          console.log("✅ Edge Impulse Model Loaded!");
+        }
+      } catch (err) {
+        console.error("❌ Failed to initialize Edge Impulse classifier:", err);
+      }
+    };
+    document.body.appendChild(script);
+    
+    return () => {
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
+    };
+  }, []);
 
   const readingsQuery = useMemo(() => {
     if (!db) return null;
@@ -97,13 +124,18 @@ export function MonitoringDashboard() {
       retryCount.current++;
       if (retryCount.current >= MAX_RETRIES) {
         isOfflineMode.current = true;
+        console.error("🚀 System switching to 'Edge Survival Mode'. oneM2M background sync paused.");
       }
     }
   }, []);
 
   const handleNewReading = useCallback(async (value: number) => {
     const timestamp = Date.now();
+    
+    // 1. standard oneM2M sync
     sendToOneM2M(value);
+
+    // 2. Cloud persistence
     if (db) {
       addDoc(collection(db, 'readings'), {
         sensorId: 'vibration-01',
@@ -113,6 +145,14 @@ export function MonitoringDashboard() {
       });
     }
 
+    // 3. Local Edge Inference (Optional: used for local classification before Cloud AI)
+    if (classifierRef.current) {
+      // In a real scenario, we'd pass a buffer of readings here
+      // const results = classifierRef.current.classify([value]);
+      // console.log("Edge Inference results:", results);
+    }
+
+    // 4. Anomaly Trigger Logic
     if (value > thresholds.max || value < thresholds.min) {
       setIsAnalyzing(true);
       try {
