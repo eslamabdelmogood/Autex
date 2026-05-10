@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AnomalyAlert } from './monitoring-dashboard';
-import { AlertTriangle, CheckCircle2, Clock, Wrench } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, Wrench, Package, MapPin, Database } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 interface AlertListProps {
@@ -60,16 +60,38 @@ export function AlertList({ alerts }: AlertListProps) {
                   </Badge>
                 </div>
 
-                <div className="ml-11 mt-3 space-y-3">
+                <div className="ml-11 mt-3 space-y-4">
                   {alert.advice && (
                     <div className="bg-accent/10 p-3 rounded-lg border border-accent/20">
                       <div className="flex items-center gap-2 mb-1">
                         <Wrench className="h-3 w-3 text-accent" />
-                        <span className="text-xs font-bold text-accent">MAINTENANCE ADVICE</span>
+                        <span className="text-xs font-bold text-accent">MAINTENANCE RECOMMENDATION</span>
                       </div>
                       <p className="text-sm leading-relaxed text-foreground/90 font-medium">
                         {alert.advice}
                       </p>
+                    </div>
+                  )}
+
+                  {alert.part_details && (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-muted/30 p-2 rounded-md border border-border/50">
+                      <div className="flex items-center gap-2 text-xs">
+                        <Package className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-muted-foreground">ID:</span>
+                        <span className="font-mono font-medium">{alert.part_details.id}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs">
+                        <MapPin className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-muted-foreground">LOC:</span>
+                        <span className="font-medium">{alert.part_details.location}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs">
+                        <Database className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-muted-foreground">STOCK:</span>
+                        <span className={`font-bold ${alert.part_details.stock < 5 ? 'text-destructive' : 'text-emerald-500'}`}>
+                          {alert.part_details.stock}
+                        </span>
+                      </div>
                     </div>
                   )}
                   

@@ -11,10 +11,11 @@ import { ThresholdSettings } from './threshold-settings';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Activity, Bell, Settings, Gauge } from 'lucide-react';
 import { detectAndClassifyAnomalies, DetectAndClassifyAnomaliesOutput } from '@/ai/flows/detect-and-classify-anomalies';
-import { generateAnomalyExplanation } from '@/ai/flows/generate-anomaly-explanation';
+import { generateAnomalyExplanation, AnomalyExplanationOutput } from '@/ai/flows/generate-anomaly-explanation';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useCollection } from '@/firebase';
+import { useFirestore } from '@/firebase';
 import { collection, addDoc, query, orderBy, limit } from 'firebase/firestore';
+import { useCollection } from '@/firebase';
 
 export type SensorReading = {
   timestamp: number;
@@ -25,6 +26,11 @@ export type AnomalyAlert = DetectAndClassifyAnomaliesOutput & {
   id: string;
   timestamp: number;
   advice?: string;
+  part_details?: {
+    id: string;
+    location: string;
+    stock: number;
+  };
 };
 
 export function MonitoringDashboard() {
@@ -65,7 +71,7 @@ export function MonitoringDashboard() {
       });
     }
 
-    // 2. Anomaly logic (User requested trigger > 80)
+    // 2. Anomaly logic (User requested trigger > 80 or outside bounds)
     if (value > thresholds.max || value < thresholds.min) {
       setIsAnalyzing(true);
       try {
@@ -78,8 +84,8 @@ export function MonitoringDashboard() {
         });
 
         if (detectionResult.isAnomaly) {
-          // Trigger the Magical Binding Function equivalent (Maintenance Flow)
-          const explanationResult = await generateAnomalyExplanation({
+          // Maintenance Logic - Structured inventory cross-reference
+          const explanationResult: AnomalyExplanationOutput = await generateAnomalyExplanation({
             vibrationValue: value,
             anomalyDetails: detectionResult.anomalyType || 'Excessive Vibration',
             machineType: 'CNC Milling Machine'
@@ -89,15 +95,16 @@ export function MonitoringDashboard() {
             ...detectionResult,
             id: crypto.randomUUID(),
             timestamp,
-            advice: explanationResult.advice
+            advice: explanationResult.recommendation,
+            part_details: explanationResult.part_details
           };
 
           setAlerts(prev => [newAlert, ...prev]);
           
           toast({
             variant: "destructive",
-            title: `CRITICAL: ${detectionResult.anomalyType}`,
-            description: explanationResult.advice,
+            title: `${explanationResult.status.toUpperCase()}: ${detectionResult.anomalyType}`,
+            description: explanationResult.recommendation,
           });
         }
       } catch (error) {
