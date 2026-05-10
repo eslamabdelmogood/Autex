@@ -3,8 +3,6 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { 
-  LineChart, 
-  Line, 
   XAxis, 
   YAxis, 
   CartesianGrid, 
@@ -19,20 +17,38 @@ import { SensorReading } from './monitoring-dashboard';
 interface LiveSensorChartProps {
   readings: SensorReading[];
   thresholds: { min: number; max: number };
+  inferenceCount: number;
+  lastFaultType: string | null;
 }
 
-export function LiveSensorChart({ readings, thresholds }: LiveSensorChartProps) {
+export function LiveSensorChart({ readings, thresholds, inferenceCount, lastFaultType }: LiveSensorChartProps) {
   const chartData = readings.map(r => ({
     time: new Date(r.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
     value: parseFloat(r.value.toFixed(2))
   }));
 
   return (
-    <Card className="border-border bg-card/50 backdrop-blur-sm">
-      <CardHeader className="flex flex-row items-center justify-between">
+    <Card className="border-border bg-card/50 backdrop-blur-sm relative overflow-hidden">
+      <CardHeader className="flex flex-row items-start justify-between">
         <div>
           <CardTitle className="text-lg font-headline">Live Vibration Analysis</CardTitle>
           <CardDescription>Real-time streaming telemetry from Sensor ID: VIB-001</CardDescription>
+        </div>
+
+        <div className="bg-black/40 p-3 rounded-lg border border-emerald-500/20 backdrop-blur-sm shadow-xl z-10">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+            <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Edge Engine Active</span>
+          </div>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="text-2xl font-mono text-emerald-400 font-bold">{inferenceCount}</span>
+            <span className="text-[10px] text-muted-foreground">Local Inferences</span> 
+          </div> 
+          {lastFaultType && ( 
+            <div className="text-[10px] text-destructive mt-1 italic font-medium animate-pulse"> 
+              Last detected: {lastFaultType} 
+            </div> 
+          )}
         </div>
       </CardHeader>
       <CardContent className="h-[400px] pt-4">

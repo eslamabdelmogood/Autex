@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
@@ -316,7 +315,12 @@ export function MonitoringDashboard() {
               </TabsList>
 
               <TabsContent value="monitor" className="space-y-6">
-                <LiveSensorChart readings={allReadings} thresholds={thresholds} />
+                <LiveSensorChart 
+                  readings={allReadings} 
+                  thresholds={thresholds} 
+                  inferenceCount={inferenceCount}
+                  lastFaultType={lastFaultType}
+                />
               </TabsContent>
 
               <TabsContent value="alerts">
