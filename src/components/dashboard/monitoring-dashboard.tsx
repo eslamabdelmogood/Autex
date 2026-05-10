@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { DashboardSidebar } from './dashboard-sidebar';
 import { ConnectionStatus } from './connection-status';
@@ -33,11 +33,16 @@ export type AnomalyAlert = DetectAndClassifyAnomaliesOutput & {
   };
 };
 
+const MAX_RETRIES = 3;
+
 export function MonitoringDashboard() {
   const [alerts, setAlerts] = useState<AnomalyAlert[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [thresholds, setThresholds] = useState({ min: 20, max: 80 });
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  
+  const retryCount = useRef(0);
+  const isOfflineMode = useRef(false);
   
   const db = useFirestore();
   const { toast } = useToast();
@@ -63,6 +68,8 @@ export function MonitoringDashboard() {
    * Pushes telemetry to a Common Service Entity (CSE) with Edge Survival logic.
    */
   const sendToOneM2M = useCallback(async (vibrationValue: number) => {
+    if (isOfflineMode.current) return;
+
     const url = 'http://localhost:8080/~/mn-cse/mn-name/Vibration_Sensor';
     
     try {
@@ -71,15 +78,7 @@ export function MonitoringDashboard() {
 
       console.log("📡 oneM2M Outgoing Payload:", vibrationValue);
 
-      const payload = {
-        "m2m:cin": {
-          "con": vibrationValue.toString(),
-          "cnf": "text/plain:0",
-          "lbl": ["vibration", "anomaly-detection"]
-        }
-      };
-
-      await fetch(url, {
+      const response = await fetch(url, {
         method: 'POST',
         signal: controller.signal,
         headers: {
@@ -87,13 +86,30 @@ export function MonitoringDashboard() {
           'Content-Type': 'application/json;ty=4',
           'Accept': 'application/json'
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({
+          "m2m:cin": {
+            "con": vibrationValue.toString(),
+            "lbl": ["vibration-analysis"]
+          }
+        })
       });
 
       clearTimeout(timeoutId);
+
+      if (response.ok) {
+        retryCount.current = 0;
+        console.log("✅ oneM2M Sync: Successful");
+      } else {
+        throw new Error('Response not OK');
+      }
     } catch (error) {
-      // Instead of showing a red error, we show a "Simulation" message for edge survival
-      console.warn("⚠️ oneM2M CSE not reachable. Running in Offline Mode (Edge Survival).");
+      retryCount.current++;
+      console.warn(`⚠️ oneM2M Attempt ${retryCount.current} failed. Check if CSE is running.`);
+
+      if (retryCount.current >= MAX_RETRIES) {
+        isOfflineMode.current = true;
+        console.error("🚀 System switching to 'Edge Survival Mode'. oneM2M background sync paused to save resources.");
+      }
     }
   }, []);
 
