@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useCallback, useMemo, useRef } from 'react';
@@ -8,8 +9,10 @@ import { LiveSensorChart } from './live-sensor-chart';
 import { AlertList } from './alert-list';
 import { KpiCards } from './kpi-cards';
 import { ThresholdSettings } from './threshold-settings';
+import { ReportUploader } from './report-uploader';
+import { ReportList } from './report-list';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Activity, Bell, Settings, Gauge } from 'lucide-react';
+import { Activity, Bell, Settings, Gauge, FileText } from 'lucide-react';
 import { detectAndClassifyAnomalies, DetectAndClassifyAnomaliesOutput } from '@/ai/flows/detect-and-classify-anomalies';
 import { generateAnomalyExplanation, AnomalyExplanationOutput } from '@/ai/flows/generate-anomaly-explanation';
 import { useToast } from '@/hooks/use-toast';
@@ -63,21 +66,12 @@ export function MonitoringDashboard() {
       .sort((a, b) => a.timestamp - b.timestamp);
   }, [dbReadings]);
 
-  /**
-   * --- oneM2M Standard Data Transmission ---
-   * Pushes telemetry to a Common Service Entity (CSE) with Edge Survival logic.
-   */
   const sendToOneM2M = useCallback(async (vibrationValue: number) => {
     if (isOfflineMode.current) return;
-
     const url = 'http://localhost:8080/~/mn-cse/mn-name/Vibration_Sensor';
-    
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 1000);
-
-      console.log("📡 oneM2M Outgoing Payload:", vibrationValue);
-
       const response = await fetch(url, {
         method: 'POST',
         signal: controller.signal,
@@ -93,38 +87,23 @@ export function MonitoringDashboard() {
           }
         })
       });
-
       clearTimeout(timeoutId);
-
       if (response.ok) {
         retryCount.current = 0;
-        console.log("✅ oneM2M Sync: Successful");
       } else {
         throw new Error('Response not OK');
       }
     } catch (error) {
       retryCount.current++;
-      console.warn(`⚠️ oneM2M Attempt ${retryCount.current} failed. Check if CSE is running.`);
-
       if (retryCount.current >= MAX_RETRIES) {
         isOfflineMode.current = true;
-        console.error("🚀 System switching to 'Edge Survival Mode'. oneM2M background sync paused to save resources.");
       }
     }
   }, []);
 
-  /**
-   * --- Magical Binding Logic ---
-   * Handles new sensor data, persists to oneM2M & Firebase, 
-   * and triggers Genkit/Gemini advice if threshold is exceeded.
-   */
   const handleNewReading = useCallback(async (value: number) => {
     const timestamp = Date.now();
-    
-    // 1. oneM2M Standard Sync (with survival logic)
     sendToOneM2M(value);
-
-    // 2. Persist to Firestore (Live Sync)
     if (db) {
       addDoc(collection(db, 'readings'), {
         sensorId: 'vibration-01',
@@ -134,7 +113,6 @@ export function MonitoringDashboard() {
       });
     }
 
-    // 3. Monitoring logic (Triggers if value > 80 or outside bounds)
     if (value > thresholds.max || value < thresholds.min) {
       setIsAnalyzing(true);
       try {
@@ -162,7 +140,6 @@ export function MonitoringDashboard() {
           };
 
           setAlerts(prev => [newAlert, ...prev]);
-          
           toast({
             variant: "destructive",
             title: `${explanationResult.status.toUpperCase()}: ${detectionResult.anomalyType}`,
@@ -202,12 +179,15 @@ export function MonitoringDashboard() {
             />
 
             <Tabs defaultValue="monitor" className="mt-8 space-y-6">
-              <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
+              <TabsList className="grid w-full grid-cols-4 lg:w-[500px]">
                 <TabsTrigger value="monitor" className="gap-2">
                   <Gauge className="h-4 w-4" /> Monitor
                 </TabsTrigger>
                 <TabsTrigger value="alerts" className="gap-2">
                   <Bell className="h-4 w-4" /> Alerts
+                </TabsTrigger>
+                <TabsTrigger value="reports" className="gap-2">
+                  <FileText className="h-4 w-4" /> Reports
                 </TabsTrigger>
                 <TabsTrigger value="settings" className="gap-2">
                   <Settings className="h-4 w-4" /> Thresholds
@@ -220,6 +200,17 @@ export function MonitoringDashboard() {
 
               <TabsContent value="alerts">
                 <AlertList alerts={alerts} />
+              </TabsContent>
+
+              <TabsContent value="reports" className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="lg:col-span-1">
+                    <ReportUploader />
+                  </div>
+                  <div className="lg:col-span-2">
+                    <ReportList />
+                  </div>
+                </div>
               </TabsContent>
 
               <TabsContent value="settings">

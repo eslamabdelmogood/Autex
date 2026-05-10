@@ -28,6 +28,45 @@
         "value",
         "timestamp"
       ]
+    },
+    "MaintenanceReport": {
+      "title": "Maintenance Report",
+      "description": "Metadata for a technical document or maintenance log.",
+      "type": "object",
+      "properties": {
+        "reportId": {
+          "type": "string"
+        },
+        "fileName": {
+          "type": "string"
+        },
+        "fileType": {
+          "type": "string"
+        },
+        "fileSize": {
+          "type": "number"
+        },
+        "uploadedAt": {
+          "type": "number"
+        },
+        "machineId": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Manual",
+            "Inspection",
+            "Repair Log",
+            "Certification"
+          ]
+        }
+      },
+      "required": [
+        "fileName",
+        "uploadedAt",
+        "machineId"
+      ]
     }
   },
   "auth": {
@@ -39,6 +78,10 @@
     "/readings/{readingId}": {
       "schema": "SensorReading",
       "description": "Collection of real-time and historical sensor telemetry."
+    },
+    "/reports/{reportId}": {
+      "schema": "MaintenanceReport",
+      "description": "Registry of uploaded maintenance documents and manuals."
     }
   }
 }
