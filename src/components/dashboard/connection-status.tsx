@@ -1,10 +1,9 @@
-
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { WifiOff, Link as LinkIcon, Unlink, AlertCircle } from 'lucide-react';
+import { WifiOff, Link as LinkIcon, Unlink, AlertCircle, FlaskConical } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface ConnectionStatusProps {
@@ -43,7 +42,6 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
     } catch (err: any) {
       console.error("Serial connection failed:", err);
       
-      // Handle the Permissions Policy error specifically
       if (err.name === 'SecurityError') {
         toast({
           variant: "destructive",
@@ -58,7 +56,7 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
         });
       }
       
-      // If hardware fails, we can optionally trigger simulation so the user can still see the app working
+      // Fallback to simulation mode if hardware is blocked
       onToggleConnection(true);
     }
   };
@@ -106,23 +104,31 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
     });
   };
 
-  // Simulated fallback for development or if hardware is blocked
+  const triggerAnomaly = () => {
+    // Generate a value between 85 and 110 to trigger AI analysis
+    const fakeVibration = Math.floor(Math.random() * (110 - 85 + 1)) + 85;
+    onNewReading(fakeVibration);
+    toast({
+      title: "Test Anomaly Sent",
+      description: `Injected vibration reading: ${fakeVibration} m/s²`,
+    });
+  };
+
+  // Simulated background noise for normal operation
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (isConnected && !port) {
       interval = setInterval(() => {
         const base = 45;
         const noise = (Math.random() - 0.5) * 10;
-        // Occasional anomaly to test AI logic
-        const anomalyTrigger = Math.random() > 0.95 ? 40 * Math.random() : 0;
-        onNewReading(base + noise + anomalyTrigger);
-      }, 1500);
+        onNewReading(base + noise);
+      }, 2000);
     }
     return () => clearInterval(interval);
   }, [isConnected, port, onNewReading]);
 
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex items-center gap-3">
       <div className="flex items-center gap-2">
         {isConnected ? (
           <Badge variant="default" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 gap-1.5 py-1 px-3">
@@ -140,6 +146,18 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
         )}
       </div>
       
+      {isConnected && (
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="gap-2 border-accent/30 hover:bg-accent/10 text-accent"
+          onClick={triggerAnomaly}
+        >
+          <FlaskConical className="h-4 w-4" />
+          Test Anomaly
+        </Button>
+      )}
+
       {isConnected ? (
         <Button 
           variant="outline" 
@@ -148,7 +166,7 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
           onClick={disconnectSerial}
         >
           <Unlink className="h-4 w-4" />
-          Stop Stream
+          Stop
         </Button>
       ) : (
         <Button 
@@ -158,7 +176,7 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
           onClick={connectSerial}
         >
           <LinkIcon className="h-4 w-4" />
-          Connect Device
+          Connect
         </Button>
       )}
     </div>
