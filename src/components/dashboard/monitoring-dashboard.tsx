@@ -11,10 +11,10 @@ import { ThresholdSettings } from './threshold-settings';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Activity, Bell, Settings, Gauge } from 'lucide-react';
 import { detectAndClassifyAnomalies, DetectAndClassifyAnomaliesOutput } from '@/ai/flows/detect-and-classify-anomalies';
-import { generateAnomalyExplanation, AnomalyExplanationOutput } from '@/ai/flows/generate-anomaly-explanation';
+import { generateAnomalyExplanation } from '@/ai/flows/generate-anomaly-explanation';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, addDoc, query, orderBy, limit, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, limit } from 'firebase/firestore';
 
 export type SensorReading = {
   timestamp: number;
@@ -24,7 +24,7 @@ export type SensorReading = {
 export type AnomalyAlert = DetectAndClassifyAnomaliesOutput & {
   id: string;
   timestamp: number;
-  explanation?: AnomalyExplanationOutput;
+  advice?: string;
 };
 
 export function MonitoringDashboard() {
@@ -36,7 +36,6 @@ export function MonitoringDashboard() {
   const db = useFirestore();
   const { toast } = useToast();
 
-  // Fetch recent historical readings from Firebase for UI
   const readingsQuery = useMemo(() => {
     if (!db) return null;
     return query(collection(db, 'readings'), orderBy('timestamp', 'desc'), limit(50));
@@ -56,17 +55,17 @@ export function MonitoringDashboard() {
   const handleNewReading = useCallback(async (value: number) => {
     const timestamp = Date.now();
     
-    // 1. Persist to Firebase Firestore
+    // 1. Persist to Firebase
     if (db) {
       addDoc(collection(db, 'readings'), {
         sensorId: 'vibration-01',
         value,
-        timestamp, // Using client timestamp for real-time consistency
+        timestamp,
         machineId: 'CNC-MILL-01'
       });
     }
 
-    // 2. Anomaly Detection and AI Advice
+    // 2. Anomaly logic (User requested trigger > 80)
     if (value > thresholds.max || value < thresholds.min) {
       setIsAnalyzing(true);
       try {
@@ -79,35 +78,30 @@ export function MonitoringDashboard() {
         });
 
         if (detectionResult.isAnomaly) {
-          // Simulated inventory check as per user snippet requirements
-          const mockInventoryData = "Part: Bearing-X2, Stock: 3, Location: Shelf C4 (Factory Floor)";
-
-          const explanation = await generateAnomalyExplanation({
-            anomalyDetails: detectionResult.anomalyType || 'Critical vibration variance',
-            currentSensorReadings: { vibration: value },
-            machineType: 'CNC Milling Machine',
-            operationalContext: 'Continuous production stream',
-            inventoryData: mockInventoryData,
-            historicalDataSummary: `Recent 5 readings variance: ${allReadings.slice(-5).map(r => r.value.toFixed(1)).join(', ')}`
+          // Trigger the Magical Binding Function equivalent (Maintenance Flow)
+          const explanationResult = await generateAnomalyExplanation({
+            vibrationValue: value,
+            anomalyDetails: detectionResult.anomalyType || 'Excessive Vibration',
+            machineType: 'CNC Milling Machine'
           });
 
           const newAlert: AnomalyAlert = {
             ...detectionResult,
             id: crypto.randomUUID(),
             timestamp,
-            explanation
+            advice: explanationResult.advice
           };
 
           setAlerts(prev => [newAlert, ...prev]);
           
           toast({
             variant: "destructive",
-            title: `AI ALERT: ${detectionResult.anomalyType}`,
-            description: explanation.recommendedImmediateAction,
+            title: `CRITICAL: ${detectionResult.anomalyType}`,
+            description: explanationResult.advice,
           });
         }
       } catch (error) {
-        // Error handling is centralized, but we stop the loading state
+        console.error("Analysis Error:", error);
       } finally {
         setIsAnalyzing(false);
       }

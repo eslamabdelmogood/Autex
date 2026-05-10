@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AnomalyAlert } from './monitoring-dashboard';
-import { AlertTriangle, CheckCircle2, Info, ChevronRight, Clock } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, Wrench } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 interface AlertListProps {
@@ -61,19 +61,15 @@ export function AlertList({ alerts }: AlertListProps) {
                 </div>
 
                 <div className="ml-11 mt-3 space-y-3">
-                  {alert.explanation && (
-                    <div className="bg-muted/50 p-3 rounded-lg border border-border/50">
-                      <p className="text-xs leading-relaxed text-foreground/90">
-                        <span className="font-semibold block mb-1">AI Reasoning:</span>
-                        {alert.explanation.explanation}
-                      </p>
-                      
-                      <div className="mt-3 space-y-2">
-                        <p className="text-xs">
-                          <span className="text-accent font-medium">Recommended Action:</span>
-                          <span className="ml-1 text-muted-foreground">{alert.explanation.recommendedImmediateAction}</span>
-                        </p>
+                  {alert.advice && (
+                    <div className="bg-accent/10 p-3 rounded-lg border border-accent/20">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Wrench className="h-3 w-3 text-accent" />
+                        <span className="text-xs font-bold text-accent">MAINTENANCE ADVICE</span>
                       </div>
+                      <p className="text-sm leading-relaxed text-foreground/90 font-medium">
+                        {alert.advice}
+                      </p>
                     </div>
                   )}
                   
