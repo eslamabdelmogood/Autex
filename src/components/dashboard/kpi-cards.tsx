@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -12,10 +11,11 @@ interface KpiCardsProps {
   activeAlertsCount: number;
   inferenceCount: number;
   lastFaultType: string | null;
+  currentValue?: number | null;
 }
 
-export function KpiCards({ readings, isAnalyzing, activeAlertsCount, inferenceCount, lastFaultType }: KpiCardsProps) {
-  const lastValue = readings.length > 0 ? readings[readings.length - 1].value : 0;
+export function KpiCards({ readings, isAnalyzing, activeAlertsCount, inferenceCount, lastFaultType, currentValue }: KpiCardsProps) {
+  const lastValue = currentValue ?? (readings.length > 0 ? readings[readings.length - 1].value : 0);
   const avgValue = readings.length > 0 
     ? readings.reduce((acc, curr) => acc + curr.value, 0) / readings.length 
     : 0;

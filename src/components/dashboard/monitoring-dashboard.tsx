@@ -46,6 +46,7 @@ export function MonitoringDashboard() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [inferenceCount, setInferenceCount] = useState(0);
   const [lastFaultType, setLastFaultType] = useState<string | null>(null);
+  const [currentVibration, setCurrentVibration] = useState<number | null>(null);
   
   const retryCount = useRef(0);
   const isOfflineMode = useRef(false);
@@ -137,10 +138,13 @@ export function MonitoringDashboard() {
   const handleNewReading = useCallback(async (value: number) => {
     const timestamp = Date.now();
     
-    // 1. standard oneM2M sync
+    // 1. Update the real-time reading immediately for a snappy UI
+    setCurrentVibration(value);
+
+    // 2. standard oneM2M sync
     sendToOneM2M(value);
 
-    // 2. Cloud persistence
+    // 3. Cloud persistence
     if (db) {
       addDoc(collection(db, 'readings'), {
         sensorId: 'vibration-01',
@@ -150,13 +154,16 @@ export function MonitoringDashboard() {
       });
     }
 
-    // 3. Local Edge Inference with Buffering
+    // 4. Local Edge Inference with Buffering
     vibrationBuffer.current.push(value);
     
     if (vibrationBuffer.current.length >= EDGE_BUFFER_SIZE) {
       if (classifierRef.current) {
         try {
+          // Perform inference only when buffer is full
           const results = classifierRef.current.classify(vibrationBuffer.current);
+          
+          // Increment inference counter after successful operation
           setInferenceCount(prev => prev + 1);
           console.log("Edge Inference Result:", results.classification);
           
@@ -220,11 +227,11 @@ export function MonitoringDashboard() {
           console.error("Local inference failed:", err);
         }
       }
-      // Reset buffer after inference or reaching limit
+      // Reset buffer after inference attempt or reaching limit
       vibrationBuffer.current = [];
     }
 
-    // 4. Threshold Trigger Logic (Cloud AI Fallback/Verification)
+    // 5. Threshold Trigger Logic (Cloud AI Fallback/Verification)
     if (value > thresholds.max || value < thresholds.min) {
       const now = Date.now();
       if (now - lastAiCallTimestamp.current > MIN_AI_INTERVAL) {
@@ -296,6 +303,7 @@ export function MonitoringDashboard() {
               activeAlertsCount={alerts.filter(a => a.severity !== 'none').length}
               inferenceCount={inferenceCount}
               lastFaultType={lastFaultType}
+              currentValue={currentVibration}
             />
 
             <Tabs defaultValue="monitor" className="mt-8 space-y-6">
