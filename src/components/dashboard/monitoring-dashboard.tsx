@@ -37,6 +37,7 @@ export type AnomalyAlert = DetectAndClassifyAnomaliesOutput & {
 };
 
 const MAX_RETRIES = 3;
+const EDGE_BUFFER_SIZE = 100;
 
 export function MonitoringDashboard() {
   const [alerts, setAlerts] = useState<AnomalyAlert[]>([]);
@@ -47,6 +48,7 @@ export function MonitoringDashboard() {
   const retryCount = useRef(0);
   const isOfflineMode = useRef(false);
   const classifierRef = useRef<any>(null);
+  const vibrationBuffer = useRef<number[]>([]);
   
   const db = useFirestore();
   const { toast } = useToast();
@@ -124,7 +126,7 @@ export function MonitoringDashboard() {
       retryCount.current++;
       if (retryCount.current >= MAX_RETRIES) {
         isOfflineMode.current = true;
-        console.error("🚀 System switching to 'Edge Survival Mode'. oneM2M background sync paused.");
+        console.warn("🚀 System switching to 'Edge Survival Mode'. oneM2M background sync paused.");
       }
     }
   }, []);
@@ -145,14 +147,53 @@ export function MonitoringDashboard() {
       });
     }
 
-    // 3. Local Edge Inference (Optional: used for local classification before Cloud AI)
-    if (classifierRef.current) {
-      // In a real scenario, we'd pass a buffer of readings here
-      // const results = classifierRef.current.classify([value]);
-      // console.log("Edge Inference results:", results);
+    // 3. Local Edge Inference with Buffering
+    vibrationBuffer.current.push(value);
+    
+    if (vibrationBuffer.current.length >= EDGE_BUFFER_SIZE) {
+      if (classifierRef.current) {
+        try {
+          const results = classifierRef.current.classify(vibrationBuffer.current);
+          console.log("Edge Inference Result:", results.classification);
+          
+          // If a fault is detected with high confidence (e.g., Bearing Wear > 0.8)
+          if (results.classification && results.classification.bearing_wear > 0.8) {
+            setIsAnalyzing(true);
+            const explanationResult = await generateAnomalyExplanation({
+              vibrationValue: value,
+              anomalyDetails: "Bearing Wear Detected by Edge AI",
+              machineType: 'CNC Milling Machine'
+            });
+
+            const newAlert: AnomalyAlert = {
+              isAnomaly: true,
+              anomalyType: "Bearing Wear (Local AI)",
+              classification: "Component Fatigue",
+              severity: "high",
+              recommendation: explanationResult.recommendation,
+              id: crypto.randomUUID(),
+              timestamp,
+              advice: explanationResult.recommendation,
+              part_details: explanationResult.part_details
+            };
+
+            setAlerts(prev => [newAlert, ...prev]);
+            toast({
+              variant: "destructive",
+              title: "EDGE AI ALERT: Bearing Wear",
+              description: explanationResult.recommendation,
+            });
+            setIsAnalyzing(false);
+          }
+        } catch (err) {
+          console.error("Local inference failed:", err);
+        }
+      }
+      // Reset buffer after inference or reaching limit
+      vibrationBuffer.current = [];
     }
 
-    // 4. Anomaly Trigger Logic
+    // 4. Threshold Trigger Logic (Cloud AI Fallback/Verification)
     if (value > thresholds.max || value < thresholds.min) {
       setIsAnalyzing(true);
       try {
