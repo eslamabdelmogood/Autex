@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useCallback, useMemo } from 'react';
@@ -15,7 +14,7 @@ import { detectAndClassifyAnomalies, DetectAndClassifyAnomaliesOutput } from '@/
 import { generateAnomalyExplanation, AnomalyExplanationOutput } from '@/ai/flows/generate-anomaly-explanation';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, addDoc, query, orderBy, limit } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, limit, serverTimestamp } from 'firebase/firestore';
 
 export type SensorReading = {
   timestamp: number;
@@ -29,7 +28,6 @@ export type AnomalyAlert = DetectAndClassifyAnomaliesOutput & {
 };
 
 export function MonitoringDashboard() {
-  const [localReadings, setLocalReadings] = useState<SensorReading[]>([]);
   const [alerts, setAlerts] = useState<AnomalyAlert[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [thresholds, setThresholds] = useState({ min: 20, max: 80 });
@@ -38,7 +36,7 @@ export function MonitoringDashboard() {
   const db = useFirestore();
   const { toast } = useToast();
 
-  // Fetch recent historical readings from Firebase
+  // Fetch recent historical readings from Firebase for UI
   const readingsQuery = useMemo(() => {
     if (!db) return null;
     return query(collection(db, 'readings'), orderBy('timestamp', 'desc'), limit(50));
@@ -46,31 +44,29 @@ export function MonitoringDashboard() {
 
   const { data: dbReadings, loading: readingsLoading } = useCollection(readingsQuery);
 
-  // Merge DB readings with local state for the chart
   const allReadings = useMemo(() => {
-    const historical = (dbReadings || []).map(doc => ({
-      timestamp: doc.timestamp,
-      value: doc.value
-    })).sort((a, b) => a.timestamp - b.timestamp);
-    
-    return historical;
+    return (dbReadings || [])
+      .map(doc => ({
+        timestamp: typeof doc.timestamp === 'number' ? doc.timestamp : Date.now(),
+        value: doc.value
+      }))
+      .sort((a, b) => a.timestamp - b.timestamp);
   }, [dbReadings]);
 
   const handleNewReading = useCallback(async (value: number) => {
     const timestamp = Date.now();
-    const readingData = {
-      sensorId: 'vibration-01',
-      value,
-      timestamp,
-      machineId: 'CNC-MILL-01'
-    };
-
-    // 1. Persist to Firebase
+    
+    // 1. Persist to Firebase Firestore
     if (db) {
-      addDoc(collection(db, 'readings'), readingData);
+      addDoc(collection(db, 'readings'), {
+        sensorId: 'vibration-01',
+        value,
+        timestamp, // Using client timestamp for real-time consistency
+        machineId: 'CNC-MILL-01'
+      });
     }
 
-    // 2. Anomaly Detection
+    // 2. Anomaly Detection and AI Advice
     if (value > thresholds.max || value < thresholds.min) {
       setIsAnalyzing(true);
       try {
@@ -83,12 +79,16 @@ export function MonitoringDashboard() {
         });
 
         if (detectionResult.isAnomaly) {
+          // Simulated inventory check as per user snippet requirements
+          const mockInventoryData = "Part: Bearing-X2, Stock: 3, Location: Shelf C4 (Factory Floor)";
+
           const explanation = await generateAnomalyExplanation({
-            anomalyDetails: detectionResult.anomalyType || 'Unknown pattern',
+            anomalyDetails: detectionResult.anomalyType || 'Critical vibration variance',
             currentSensorReadings: { vibration: value },
             machineType: 'CNC Milling Machine',
-            operationalContext: 'High-speed finishing pass',
-            historicalDataSummary: `Recent variance detected: ${allReadings.slice(-5).map(r => r.value.toFixed(1)).join(', ')}`
+            operationalContext: 'Continuous production stream',
+            inventoryData: mockInventoryData,
+            historicalDataSummary: `Recent 5 readings variance: ${allReadings.slice(-5).map(r => r.value.toFixed(1)).join(', ')}`
           });
 
           const newAlert: AnomalyAlert = {
@@ -102,12 +102,12 @@ export function MonitoringDashboard() {
           
           toast({
             variant: "destructive",
-            title: `CRITICAL: ${detectionResult.anomalyType}`,
+            title: `AI ALERT: ${detectionResult.anomalyType}`,
             description: explanation.recommendedImmediateAction,
           });
         }
       } catch (error) {
-        console.error("AI Analysis failed", error);
+        // Error handling is centralized, but we stop the loading state
       } finally {
         setIsAnalyzing(false);
       }

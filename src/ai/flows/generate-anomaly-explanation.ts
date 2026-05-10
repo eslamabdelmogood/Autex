@@ -1,8 +1,7 @@
 'use server';
 /**
- * @fileOverview This file implements a Genkit flow for generating clear, human-readable explanations
- * of detected machine anomalies, including potential root causes, likely impact,
- * and recommended immediate actions for maintenance technicians.
+ * @fileOverview This file implements a Genkit flow for generating technical maintenance 
+ * explanations and advice, integrating sensor data with inventory context.
  *
  * - generateAnomalyExplanation - A function that handles the anomaly explanation process.
  * - AnomalyExplanationInput - The input type for the generateAnomalyExplanation function.
@@ -24,7 +23,11 @@ const AnomalyExplanationInputSchema = z.object({
     .describe('The type or name of the machine where the anomaly was detected.'),
   operationalContext: z
     .string()
-    .describe('A brief description of the machine\u0027s current operational state or activity.'),
+    .describe('A brief description of the machine\'s current operational state.'),
+  inventoryData: z
+    .string()
+    .optional()
+    .describe('Contextual information about spare parts availability (e.g., Stock from inventory).'),
   historicalDataSummary: z
     .string()
     .optional()
@@ -44,11 +47,11 @@ const AnomalyExplanationOutputSchema = z.object({
   likelyImpact: z
     .string()
     .describe(
-      'Describes the likely impact of this anomaly on machine operation and overall production.'
+      'Describes the likely impact of this anomaly on machine operation.'
     ),
   recommendedImmediateAction: z
     .string()
-    .describe('Suggests immediate actions the technician should consider.'),
+    .describe('Suggests immediate actions, including parts to check or replace based on inventory.'),
 });
 export type AnomalyExplanationOutput = z.infer<typeof AnomalyExplanationOutputSchema>;
 
@@ -62,17 +65,27 @@ const anomalyExplanationPrompt = ai.definePrompt({
   name: 'anomalyExplanationPrompt',
   input: {schema: AnomalyExplanationInputSchema},
   output: {schema: AnomalyExplanationOutputSchema},
-  prompt: `You are an expert industrial maintenance technician and diagnostic AI. Your task is to analyze machine anomaly data and provide a clear, human-readable explanation for maintenance technicians.
+  prompt: `You are an expert industrial maintenance technician and diagnostic AI. 
 
-Based on the following information, generate an explanation of the detected unusual pattern, including its potential root causes, likely impact on machine operation, and recommended immediate actions.
+Analyze the following machine data and provide a clear explanation and maintenance strategy.
 
-Machine Type: {{{machineType}}}
-Operational Context: {{{operationalContext}}}
-Anomaly Details: {{{anomalyDetails}}}
-Current Sensor Readings: {{{json currentSensorReadings}}}
-{{#if historicalDataSummary}}Historical Data Summary: {{{historicalDataSummary}}}{{/if}}
+MACHINE INFO:
+- Type: {{{machineType}}}
+- Operational Context: {{{operationalContext}}}
+- Anomaly Detected: {{{anomalyDetails}}}
+- Current Readings: {{{json currentSensorReadings}}}
 
-Please provide your response in the following JSON format as described by the output schema.`,
+{{#if inventoryData}}
+INVENTORY CONTEXT:
+{{{inventoryData}}}
+{{/if}}
+
+{{#if historicalDataSummary}}
+HISTORY: 
+{{{historicalDataSummary}}}
+{{/if}}
+
+Please generate a technical breakdown. If inventory data is provided, incorporate it into your 'recommendedImmediateAction' (e.g., "Replace part X, which is available at Location Y").`,
 });
 
 const anomalyExplanationFlow = ai.defineFlow(

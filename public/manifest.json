@@ -1,8 +1,7 @@
-
 {
   "name": "Industrial Sentinel",
   "short_name": "Sentinel",
-  "description": "AI-Powered Smart Monitoring Platform for industrial sensors.",
+  "description": "AI-Powered Smart Monitoring Platform",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f172a",
@@ -14,7 +13,7 @@
       "type": "image/png"
     },
     {
-      "src": "https://picsum.photos/seed/sentinel-icon/512/512",
+      "src": "https://picsum.photos/seed/sentinel-icon-large/512/512",
       "sizes": "512x512",
       "type": "image/png"
     }
