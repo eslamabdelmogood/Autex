@@ -1,17 +1,19 @@
+
 "use client";
 
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { SensorReading } from './monitoring-dashboard';
-import { TrendingUp, TrendingDown, ShieldAlert, Cpu, Loader2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, ShieldAlert, Cpu, Loader2, BrainCircuit } from 'lucide-react';
 
 interface KpiCardsProps {
   readings: SensorReading[];
   isAnalyzing: boolean;
   activeAlertsCount: number;
+  inferenceCount: number;
 }
 
-export function KpiCards({ readings, isAnalyzing, activeAlertsCount }: KpiCardsProps) {
+export function KpiCards({ readings, isAnalyzing, activeAlertsCount, inferenceCount }: KpiCardsProps) {
   const lastValue = readings.length > 0 ? readings[readings.length - 1].value : 0;
   const avgValue = readings.length > 0 
     ? readings.reduce((acc, curr) => acc + curr.value, 0) / readings.length 
@@ -22,7 +24,7 @@ export function KpiCards({ readings, isAnalyzing, activeAlertsCount }: KpiCardsP
     : 'neutral';
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
       <Card className="bg-card/40 border-border">
         <CardContent className="p-6 flex items-center justify-between">
           <div className="space-y-1">
@@ -34,6 +36,35 @@ export function KpiCards({ readings, isAnalyzing, activeAlertsCount }: KpiCardsP
           </div>
           <div className={`p-3 rounded-xl bg-accent/10 ${trend === 'up' ? 'text-accent' : 'text-emerald-500'}`}>
             {trend === 'up' ? <TrendingUp className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-card/40 border-border">
+        <CardContent className="p-6 flex items-center justify-between">
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Edge AI Inferences</p>
+            <div className="flex items-baseline gap-2">
+              <h3 className="text-2xl font-bold font-headline">{inferenceCount}</h3>
+              <span className="text-xs text-muted-foreground">Local</span>
+            </div>
+          </div>
+          <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-500">
+            <BrainCircuit className="h-5 w-5" />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-card/40 border-border">
+        <CardContent className="p-6 flex items-center justify-between">
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Active Alerts</p>
+            <h3 className={`text-2xl font-bold font-headline ${activeAlertsCount > 0 ? 'text-destructive' : 'text-foreground'}`}>
+              {activeAlertsCount}
+            </h3>
+          </div>
+          <div className={`p-3 rounded-xl ${activeAlertsCount > 0 ? 'bg-destructive/10 text-destructive animate-pulse' : 'bg-muted/10 text-muted-foreground'}`}>
+            <ShieldAlert className="h-5 w-5" />
           </div>
         </CardContent>
       </Card>
@@ -53,32 +84,18 @@ export function KpiCards({ readings, isAnalyzing, activeAlertsCount }: KpiCardsP
         </CardContent>
       </Card>
 
-      <Card className="bg-card/40 border-border">
-        <CardContent className="p-6 flex items-center justify-between">
-          <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Active Alerts</p>
-            <h3 className={`text-2xl font-bold font-headline ${activeAlertsCount > 0 ? 'text-destructive' : 'text-foreground'}`}>
-              {activeAlertsCount}
-            </h3>
-          </div>
-          <div className={`p-3 rounded-xl ${activeAlertsCount > 0 ? 'bg-destructive/10 text-destructive animate-pulse' : 'bg-muted/10 text-muted-foreground'}`}>
-            <ShieldAlert className="h-5 w-5" />
-          </div>
-        </CardContent>
-      </Card>
-
       <Card className="bg-card/40 border-border relative overflow-hidden">
         <CardContent className="p-6 flex items-center justify-between">
           <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">AI Guard Status</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Cloud AI Status</p>
             <h3 className="text-sm font-semibold text-accent flex items-center gap-2">
               {isAnalyzing ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Analyzing Stream...
+                  Analyzing...
                 </>
               ) : (
-                "Continuous Watch"
+                "Guard Active"
               )}
             </h3>
           </div>

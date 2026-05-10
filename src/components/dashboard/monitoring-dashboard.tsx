@@ -45,6 +45,8 @@ export function MonitoringDashboard() {
   const [isConnected, setIsConnected] = useState(false);
   const [thresholds, setThresholds] = useState({ min: 20, max: 80 });
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [inferenceCount, setInferenceCount] = useState(0);
+  const [lastFaultType, setLastFaultType] = useState<string | null>(null);
   
   const retryCount = useRef(0);
   const isOfflineMode = useRef(false);
@@ -156,10 +158,12 @@ export function MonitoringDashboard() {
       if (classifierRef.current) {
         try {
           const results = classifierRef.current.classify(vibrationBuffer.current);
+          setInferenceCount(prev => prev + 1);
           console.log("Edge Inference Result:", results.classification);
           
           // If a fault is detected with high confidence (e.g., Bearing Wear > 0.8)
           if (results.classification && results.classification.bearing_wear > 0.8) {
+            setLastFaultType("Bearing Wear");
             const now = Date.now();
             
             if (now - lastAiCallTimestamp.current > MIN_AI_INTERVAL) {
@@ -290,7 +294,8 @@ export function MonitoringDashboard() {
             <KpiCards 
               readings={allReadings} 
               isAnalyzing={isAnalyzing || readingsLoading} 
-              activeAlertsCount={alerts.filter(a => a.severity !== 'none').length} 
+              activeAlertsCount={alerts.filter(a => a.severity !== 'none').length}
+              inferenceCount={inferenceCount}
             />
 
             <Tabs defaultValue="monitor" className="mt-8 space-y-6">
