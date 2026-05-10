@@ -296,6 +296,7 @@ export function MonitoringDashboard() {
               isAnalyzing={isAnalyzing || readingsLoading} 
               activeAlertsCount={alerts.filter(a => a.severity !== 'none').length}
               inferenceCount={inferenceCount}
+              lastFaultType={lastFaultType}
             />
 
             <Tabs defaultValue="monitor" className="mt-8 space-y-6">

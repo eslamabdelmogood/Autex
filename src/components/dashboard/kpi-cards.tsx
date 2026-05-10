@@ -4,16 +4,17 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { SensorReading } from './monitoring-dashboard';
-import { TrendingUp, TrendingDown, ShieldAlert, Cpu, Loader2, BrainCircuit } from 'lucide-react';
+import { TrendingUp, TrendingDown, ShieldAlert, Cpu, Loader2, BrainCircuit, Activity } from 'lucide-react';
 
 interface KpiCardsProps {
   readings: SensorReading[];
   isAnalyzing: boolean;
   activeAlertsCount: number;
   inferenceCount: number;
+  lastFaultType: string | null;
 }
 
-export function KpiCards({ readings, isAnalyzing, activeAlertsCount, inferenceCount }: KpiCardsProps) {
+export function KpiCards({ readings, isAnalyzing, activeAlertsCount, inferenceCount, lastFaultType }: KpiCardsProps) {
   const lastValue = readings.length > 0 ? readings[readings.length - 1].value : 0;
   const avgValue = readings.length > 0 
     ? readings.reduce((acc, curr) => acc + curr.value, 0) / readings.length 
@@ -72,14 +73,15 @@ export function KpiCards({ readings, isAnalyzing, activeAlertsCount, inferenceCo
       <Card className="bg-card/40 border-border">
         <CardContent className="p-6 flex items-center justify-between">
           <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Average Intensity</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Last Detection</p>
             <div className="flex items-baseline gap-2">
-              <h3 className="text-2xl font-bold font-headline">{avgValue.toFixed(1)}</h3>
-              <span className="text-xs text-muted-foreground">m/s²</span>
+              <h3 className={`text-sm font-bold font-headline truncate max-w-[120px] ${lastFaultType ? 'text-orange-500' : 'text-muted-foreground'}`}>
+                {lastFaultType || "None"}
+              </h3>
             </div>
           </div>
           <div className="p-3 rounded-xl bg-primary/10 text-primary-foreground">
-            <Cpu className="h-5 w-5 text-accent" />
+            <Activity className="h-5 w-5 text-accent" />
           </div>
         </CardContent>
       </Card>
