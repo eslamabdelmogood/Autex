@@ -14,7 +14,7 @@ import { detectAndClassifyAnomalies, DetectAndClassifyAnomaliesOutput } from '@/
 import { generateAnomalyExplanation, AnomalyExplanationOutput } from '@/ai/flows/generate-anomaly-explanation';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase';
-import { collection, addDoc, query, orderBy, limit } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, limit, serverTimestamp } from 'firebase/firestore';
 import { useCollection } from '@/firebase';
 
 export type SensorReading = {
@@ -58,10 +58,15 @@ export function MonitoringDashboard() {
       .sort((a, b) => a.timestamp - b.timestamp);
   }, [dbReadings]);
 
+  /**
+   * --- Magical Binding Logic ---
+   * Handles new sensor data, persists to Firebase, 
+   * and triggers Genkit/Gemini advice if threshold is exceeded.
+   */
   const handleNewReading = useCallback(async (value: number) => {
     const timestamp = Date.now();
     
-    // 1. Persist to Firebase
+    // 1. Persist to Firestore (Live Sync)
     if (db) {
       addDoc(collection(db, 'readings'), {
         sensorId: 'vibration-01',
@@ -71,10 +76,11 @@ export function MonitoringDashboard() {
       });
     }
 
-    // 2. Anomaly logic (User requested trigger > 80 or outside bounds)
+    // 2. Monitoring logic (Triggers if value > 80 or outside bounds)
     if (value > thresholds.max || value < thresholds.min) {
       setIsAnalyzing(true);
       try {
+        // Detect and classify the anomaly using AI
         const detectionResult = await detectAndClassifyAnomalies({
           sensorId: 'vibration-01',
           value,
@@ -84,21 +90,23 @@ export function MonitoringDashboard() {
         });
 
         if (detectionResult.isAnomaly) {
-          // Maintenance Logic - Structured inventory cross-reference
+          // --- AI Technical Advice (Gemini + MongoDB Inventory) ---
           const explanationResult: AnomalyExplanationOutput = await generateAnomalyExplanation({
             vibrationValue: value,
             anomalyDetails: detectionResult.anomalyType || 'Excessive Vibration',
             machineType: 'CNC Milling Machine'
           });
 
+          // Create the structured alert object
           const newAlert: AnomalyAlert = {
             ...detectionResult,
             id: crypto.randomUUID(),
             timestamp,
-            advice: explanationResult.recommendation,
+            advice: explanationResult.recommendation, // Gemini's response containing Mango's data
             part_details: explanationResult.part_details
           };
 
+          // --- Manual Update to Alerts List in Interface ---
           setAlerts(prev => [newAlert, ...prev]);
           
           toast({
@@ -108,7 +116,7 @@ export function MonitoringDashboard() {
           });
         }
       } catch (error) {
-        console.error("Analysis Error:", error);
+        console.error("An error occurred during AI analysis:", error);
       } finally {
         setIsAnalyzing(false);
       }
