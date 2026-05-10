@@ -14,7 +14,7 @@ import { detectAndClassifyAnomalies, DetectAndClassifyAnomaliesOutput } from '@/
 import { generateAnomalyExplanation, AnomalyExplanationOutput } from '@/ai/flows/generate-anomaly-explanation';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase';
-import { collection, addDoc, query, orderBy, limit, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, limit } from 'firebase/firestore';
 import { useCollection } from '@/firebase';
 
 export type SensorReading = {
@@ -59,14 +59,48 @@ export function MonitoringDashboard() {
   }, [dbReadings]);
 
   /**
+   * --- oneM2M Standard Data Transmission ---
+   * Pushes telemetry to a Common Service Entity (CSE)
+   */
+  const sendToOneM2M = useCallback(async (vibrationValue: number) => {
+    // Placeholder URL - Update with your actual CSE endpoint
+    const url = 'http://localhost:8080/~/mn-cse/mn-name/Vibration_Sensor'; 
+
+    const payload = {
+      "m2m:cin": {
+        "con": vibrationValue.toString(),
+        "cnf": "text/plain:0",
+        "lbl": ["vibration", "anomaly-detection"]
+      }
+    };
+
+    try {
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'X-M2M-Origin': 'admin:admin',
+          'Content-Type': 'application/json;ty=4',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      }).catch(err => console.error("oneM2M Background Error:", err));
+    } catch (error) {
+      console.error("oneM2M Communication Error:", error);
+    }
+  }, []);
+
+  /**
    * --- Magical Binding Logic ---
-   * Handles new sensor data, persists to Firebase, 
+   * Handles new sensor data, persists to oneM2M & Firebase, 
    * and triggers Genkit/Gemini advice if threshold is exceeded.
    */
   const handleNewReading = useCallback(async (value: number) => {
     const timestamp = Date.now();
     
-    // 1. Persist to Firestore (Live Sync)
+    // 1. oneM2M Standard Sync
+    sendToOneM2M(value);
+
+    // 2. Persist to Firestore (Live Sync)
     if (db) {
       addDoc(collection(db, 'readings'), {
         sensorId: 'vibration-01',
@@ -76,11 +110,10 @@ export function MonitoringDashboard() {
       });
     }
 
-    // 2. Monitoring logic (Triggers if value > 80 or outside bounds)
+    // 3. Monitoring logic (Triggers if value > 80 or outside bounds)
     if (value > thresholds.max || value < thresholds.min) {
       setIsAnalyzing(true);
       try {
-        // Detect and classify the anomaly using AI
         const detectionResult = await detectAndClassifyAnomalies({
           sensorId: 'vibration-01',
           value,
@@ -90,23 +123,20 @@ export function MonitoringDashboard() {
         });
 
         if (detectionResult.isAnomaly) {
-          // --- AI Technical Advice (Gemini + MongoDB Inventory) ---
           const explanationResult: AnomalyExplanationOutput = await generateAnomalyExplanation({
             vibrationValue: value,
             anomalyDetails: detectionResult.anomalyType || 'Excessive Vibration',
             machineType: 'CNC Milling Machine'
           });
 
-          // Create the structured alert object
           const newAlert: AnomalyAlert = {
             ...detectionResult,
             id: crypto.randomUUID(),
             timestamp,
-            advice: explanationResult.recommendation, // Gemini's response containing Mango's data
+            advice: explanationResult.recommendation,
             part_details: explanationResult.part_details
           };
 
-          // --- Manual Update to Alerts List in Interface ---
           setAlerts(prev => [newAlert, ...prev]);
           
           toast({
@@ -121,7 +151,7 @@ export function MonitoringDashboard() {
         setIsAnalyzing(false);
       }
     }
-  }, [allReadings, thresholds, db, toast]);
+  }, [allReadings, thresholds, db, toast, sendToOneM2M]);
 
   return (
     <SidebarProvider>
