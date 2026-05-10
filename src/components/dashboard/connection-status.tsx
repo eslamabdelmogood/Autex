@@ -40,13 +40,26 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
         title: "Hardware Connected",
         description: "Receiving live telemetry from Serial Port.",
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error("Serial connection failed:", err);
-      toast({
-        variant: "destructive",
-        title: "Connection Failed",
-        description: "Could not establish link with serial device.",
-      });
+      
+      // Handle the Permissions Policy error specifically
+      if (err.name === 'SecurityError') {
+        toast({
+          variant: "destructive",
+          title: "Permission Denied",
+          description: "Browser policy blocked Serial access. Try opening this app in a new tab or installing it as a PWA.",
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Connection Failed",
+          description: err.message || "Could not establish link with serial device.",
+        });
+      }
+      
+      // If hardware fails, we can optionally trigger simulation so the user can still see the app working
+      onToggleConnection(true);
     }
   };
 
@@ -61,7 +74,6 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
         const { value, done } = await reader.read();
         if (done) break;
         if (value) {
-          // Expecting CSV or single numbers. Parsing logic for industrial streams:
           const numericValue = parseFloat(value.trim());
           if (!isNaN(numericValue)) {
             onNewReading(numericValue);
@@ -80,7 +92,11 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
       await readerRef.current.cancel();
     }
     if (port) {
-      await port.close();
+      try {
+        await port.close();
+      } catch (e) {
+        console.error("Error closing port:", e);
+      }
     }
     setPort(null);
     onToggleConnection(false);
@@ -90,16 +106,17 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
     });
   };
 
-  // Simulated fallback for development if no device is connected
+  // Simulated fallback for development or if hardware is blocked
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (isConnected && !port) {
       interval = setInterval(() => {
         const base = 45;
         const noise = (Math.random() - 0.5) * 10;
-        const anomalyTrigger = Math.random() > 0.98 ? 60 * Math.random() : 0;
+        // Occasional anomaly to test AI logic
+        const anomalyTrigger = Math.random() > 0.95 ? 40 * Math.random() : 0;
         onNewReading(base + noise + anomalyTrigger);
-      }, 1000);
+      }, 1500);
     }
     return () => clearInterval(interval);
   }, [isConnected, port, onNewReading]);
@@ -131,7 +148,7 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
           onClick={disconnectSerial}
         >
           <Unlink className="h-4 w-4" />
-          Disconnect
+          Stop Stream
         </Button>
       ) : (
         <Button 
@@ -141,7 +158,7 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
           onClick={connectSerial}
         >
           <LinkIcon className="h-4 w-4" />
-          Connect Hardware
+          Connect Device
         </Button>
       )}
     </div>
