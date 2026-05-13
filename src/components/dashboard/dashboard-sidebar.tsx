@@ -22,15 +22,17 @@ import {
   Database,
   TrendingUp,
   ShieldCheck,
-  FileText
+  FileText,
+  Microchip
 } from "lucide-react";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 
 interface DashboardSidebarProps {
   language?: 'en' | 'ar';
+  hasGreenBox?: boolean;
 }
 
-export function DashboardSidebar({ language = 'en' }: DashboardSidebarProps) {
+export function DashboardSidebar({ language = 'en', hasGreenBox = false }: DashboardSidebarProps) {
   const logo = PlaceHolderImages.find(img => img.id === 'black-dragon-logo');
 
   const translations = {
@@ -46,7 +48,9 @@ export function DashboardSidebar({ language = 'en' }: DashboardSidebarProps) {
       ledger: "System Ledger",
       connectivity: "Connectivity",
       cloud: "Cloud Sync Active",
-      config: "Configuration"
+      config: "Configuration",
+      greenBox: "Green Box: Offline",
+      greenBoxActive: "Green Box: Online"
     },
     ar: {
       brand: "التنين الأسود",
@@ -60,7 +64,9 @@ export function DashboardSidebar({ language = 'en' }: DashboardSidebarProps) {
       ledger: "دفتر النظام",
       connectivity: "الاتصال",
       cloud: "مزامنة سحابية نشطة",
-      config: "الإعدادات"
+      config: "الإعدادات",
+      greenBox: "الصندوق الأخضر: متوقف",
+      greenBoxActive: "الصندوق الأخضر: نشط"
     }
   };
 
@@ -142,6 +148,14 @@ export function DashboardSidebar({ language = 'en' }: DashboardSidebarProps) {
           <SidebarGroupLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">{t.connectivity}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton tooltip={hasGreenBox ? t.greenBoxActive : t.greenBox}>
+                  <Microchip className={`h-4 w-4 ${hasGreenBox ? 'text-emerald-500' : 'text-muted-foreground/40'}`} />
+                  <span className={`font-medium ${hasGreenBox ? 'text-emerald-500' : 'text-muted-foreground/40'}`}>
+                    {hasGreenBox ? t.greenBoxActive : t.greenBox}
+                  </span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton tooltip={t.cloud}>
                   <Database className="h-4 w-4" />

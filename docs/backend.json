@@ -1,6 +1,25 @@
 
 {
   "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "User preferences and hardware connectivity status.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string"
+        },
+        "hasGreenBox": {
+          "type": "boolean",
+          "description": "Whether the external Industrial Precision Green Box is connected."
+        },
+        "language": {
+          "type": "string",
+          "enum": ["en", "ar"]
+        }
+      },
+      "required": ["userId"]
+    },
     "SensorReading": {
       "title": "Sensor Reading",
       "description": "A single telemetry data point from an industrial sensor.",
@@ -75,6 +94,10 @@
     ]
   },
   "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User settings and hardware permissions."
+    },
     "/readings/{readingId}": {
       "schema": "SensorReading",
       "description": "Collection of real-time and historical sensor telemetry."

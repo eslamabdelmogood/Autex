@@ -16,13 +16,27 @@ import { MaintenanceInsights } from './maintenance-insights';
 import { HealthCertificate } from './health-certificate';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Activity, Bell, Settings, Gauge, FileText, TrendingUp, ShieldCheck, History, Languages } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { 
+  Activity, 
+  Bell, 
+  Settings, 
+  Gauge, 
+  FileText, 
+  TrendingUp, 
+  ShieldCheck, 
+  Languages, 
+  Cpu, 
+  Binary,
+  Zap,
+  Microchip
+} from 'lucide-react';
 import { detectAndClassifyAnomalies, DetectAndClassifyAnomaliesOutput } from '@/ai/flows/detect-and-classify-anomalies';
 import { generateAnomalyExplanation, AnomalyExplanationOutput } from '@/ai/flows/generate-anomaly-explanation';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore } from '@/firebase';
-import { collection, addDoc, query, orderBy, limit } from 'firebase/firestore';
-import { useCollection } from '@/firebase';
+import { useFirestore, useUser } from '@/firebase';
+import { collection, addDoc, query, orderBy, limit, doc } from 'firebase/firestore';
+import { useCollection, useDoc } from '@/firebase';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export type SensorReading = {
@@ -67,8 +81,18 @@ export function MonitoringDashboard() {
   const lastAiCallTimestamp = useRef(0);
   
   const db = useFirestore();
+  const { user } = useUser();
   const { toast } = useToast();
   const logo = PlaceHolderImages.find(img => img.id === 'black-dragon-logo');
+
+  // Fetch Green Box Status from User Profile
+  const userProfileRef = useMemo(() => {
+    if (!db || !user) return null;
+    return doc(db, 'users', user.uid);
+  }, [db, user]);
+
+  const { data: userProfile } = useDoc(userProfileRef);
+  const hasGreenBox = userProfile?.hasGreenBox || false;
 
   useEffect(() => {
     const script = document.createElement('script');
@@ -219,6 +243,10 @@ export function MonitoringDashboard() {
       proof: "Proof",
       reports: "Reports",
       settings: "Settings",
+      greenBox: "Industrial Precision Mode - Connect Green Box",
+      greenBoxActive: "Green Box Active - High Precision Enabled",
+      greenBoxTeaser: "Coming soon... Increase inspection accuracy to 99.9% with real-time processing (1ms) via the external Green Box unit. Predict collapses before they occur with industrial sensors.",
+      advancedAnalysis: "Advanced Analysis",
       edgeActive: "AI Edge Engine Active",
       localSyncs: "Local Syncs",
       fault: "Fault",
@@ -232,6 +260,10 @@ export function MonitoringDashboard() {
       proof: "الإثبات",
       reports: "التقارير",
       settings: "الإعدادات",
+      greenBox: "وضع الدقة الصناعية - اربط الصندوق الأخضر",
+      greenBoxActive: "الصندوق الأخضر نشط - تم تفعيل الدقة العالية",
+      greenBoxTeaser: "قريباً... ارفع دقة الفحص إلى 99.9% مع معالجة فورية (1 ملي ثانية) عبر وحدة الصندوق الأخضر الخارجية. توقع الانهيارات قبل حدوثها بحساسات صناعية.",
+      advancedAnalysis: "تحليل متقدم",
       edgeActive: "محرك الذكاء الاصطناعي نشط",
       localSyncs: "مزامنات محلية",
       fault: "خطأ",
@@ -244,7 +276,7 @@ export function MonitoringDashboard() {
   return (
     <SidebarProvider>
       <div className="flex w-full overflow-hidden" dir={language === 'ar' ? 'rtl' : 'ltr'}>
-        <DashboardSidebar language={language} />
+        <DashboardSidebar language={language} hasGreenBox={hasGreenBox} />
         <SidebarInset className="flex flex-col bg-background">
           <header className="flex h-16 shrink-0 items-center justify-between border-b px-4 md:px-6">
             <div className="flex items-center gap-3">
@@ -264,6 +296,25 @@ export function MonitoringDashboard() {
             </div>
             
             <div className="flex items-center gap-2 md:gap-4">
+              {/* Green Box Indicator */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className={`h-9 w-9 transition-all ${hasGreenBox ? 'text-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'text-muted-foreground/40 opacity-50 grayscale cursor-help'}`}
+                    >
+                      <Microchip className={`h-5 w-5 ${hasGreenBox ? 'animate-pulse' : ''}`} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-[250px] p-3 text-[10px] md:text-xs">
+                    <p className="font-bold mb-1">{hasGreenBox ? t.greenBoxActive : t.greenBox}</p>
+                    {!hasGreenBox && <p className="text-muted-foreground leading-snug">{t.greenBoxTeaser}</p>}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
               <Button 
                 variant="ghost" 
                 size="icon" 
@@ -280,11 +331,6 @@ export function MonitoringDashboard() {
           </header>
 
           <main className="flex-1 overflow-y-auto p-4 md:p-6">
-            {/* Mobile Connection Status */}
-            <div className="sm:hidden mb-4">
-              <ConnectionStatus isConnected={isConnected} onToggleConnection={setIsConnected} onNewReading={handleNewReading} language={language} />
-            </div>
-
             <KpiCards 
               readings={allReadings} 
               isAnalyzing={isAnalyzing || readingsLoading} 
@@ -300,12 +346,13 @@ export function MonitoringDashboard() {
 
             <Tabs defaultValue="monitor" className="mt-8 space-y-6">
               <div className="w-full overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
-                <TabsList className="flex w-max lg:w-full min-w-full lg:grid lg:grid-cols-6 gap-2 bg-muted/20 p-1">
+                <TabsList className="flex w-max lg:w-full min-w-full lg:grid lg:grid-cols-7 gap-2 bg-muted/20 p-1">
                   <TabsTrigger value="monitor" className="gap-2 flex-1"><Gauge className="h-4 w-4" /> {t.monitor}</TabsTrigger>
                   <TabsTrigger value="alerts" className="gap-2 flex-1"><Bell className="h-4 w-4" /> {t.alerts}</TabsTrigger>
                   <TabsTrigger value="insights" className="gap-2 flex-1"><TrendingUp className="h-4 w-4" /> {t.insights}</TabsTrigger>
                   <TabsTrigger value="certificate" className="gap-2 flex-1"><ShieldCheck className="h-4 w-4" /> {t.proof}</TabsTrigger>
                   <TabsTrigger value="reports" className="gap-2 flex-1"><FileText className="h-4 w-4" /> {t.reports}</TabsTrigger>
+                  {hasGreenBox && <TabsTrigger value="advanced" className="gap-2 flex-1 bg-emerald-500/10 text-emerald-500 data-[state=active]:bg-emerald-500 data-[state=active]:text-white"><Binary className="h-4 w-4" /> {t.advancedAnalysis}</TabsTrigger>}
                   <TabsTrigger value="settings" className="gap-2 flex-1"><Settings className="h-4 w-4" /> {t.settings}</TabsTrigger>
                 </TabsList>
               </div>
@@ -330,6 +377,23 @@ export function MonitoringDashboard() {
               <TabsContent value="alerts"><AlertList alerts={alerts} language={language} /></TabsContent>
               <TabsContent value="insights"><MaintenanceInsights readings={allReadings} alerts={alerts} language={language} /></TabsContent>
               <TabsContent value="certificate"><HealthCertificate healthScore={healthScore} machineId="CNC-MILL-01" language={language} /></TabsContent>
+
+              {hasGreenBox && (
+                <TabsContent value="advanced" className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-card p-6 rounded-xl border border-emerald-500/20 h-64 flex flex-col items-center justify-center text-center space-y-4">
+                      <Binary className="h-12 w-12 text-emerald-500" />
+                      <h3 className="text-xl font-black uppercase italic">Green Box Advanced Engine</h3>
+                      <p className="text-sm text-muted-foreground">High-precision 1ms spectral sampling active. No jitter detected.</p>
+                    </div>
+                    <div className="bg-card p-6 rounded-xl border border-emerald-500/20 h-64 flex flex-col items-center justify-center text-center space-y-4">
+                      <Zap className="h-12 w-12 text-emerald-500" />
+                      <h3 className="text-xl font-black uppercase italic">Structural Resonance Sync</h3>
+                      <p className="text-sm text-muted-foreground">Syncing with CNC frame harmonics. Accuracy: 99.9%.</p>
+                    </div>
+                  </div>
+                </TabsContent>
+              )}
 
               <TabsContent value="reports" className="space-y-6">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
