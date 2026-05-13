@@ -10,8 +10,10 @@ import { KpiCards } from './kpi-cards';
 import { ThresholdSettings } from './threshold-settings';
 import { ReportUploader } from './report-uploader';
 import { ReportList } from './report-list';
+import { MaintenanceInsights } from './maintenance-insights';
+import { HealthCertificate } from './health-certificate';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Activity, Bell, Settings, Gauge, FileText } from 'lucide-react';
+import { Activity, Bell, Settings, Gauge, FileText, TrendingUp, ShieldCheck, History } from 'lucide-react';
 import { detectAndClassifyAnomalies, DetectAndClassifyAnomaliesOutput } from '@/ai/flows/detect-and-classify-anomalies';
 import { generateAnomalyExplanation, AnomalyExplanationOutput } from '@/ai/flows/generate-anomaly-explanation';
 import { useToast } from '@/hooks/use-toast';
@@ -22,6 +24,9 @@ import { useCollection } from '@/firebase';
 export type SensorReading = {
   timestamp: number;
   value: number;
+  rpm?: number;
+  temp?: number;
+  load?: number;
 };
 
 export type AnomalyAlert = DetectAndClassifyAnomaliesOutput & {
@@ -35,9 +40,8 @@ export type AnomalyAlert = DetectAndClassifyAnomaliesOutput & {
   };
 };
 
-const MAX_RETRIES = 3;
 const EDGE_BUFFER_SIZE = 100;
-const MIN_AI_INTERVAL = 60000; // One minute between each Gemini call
+const MIN_AI_INTERVAL = 60000;
 
 export function MonitoringDashboard() {
   const [alerts, setAlerts] = useState<AnomalyAlert[]>([]);
@@ -46,10 +50,13 @@ export function MonitoringDashboard() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [inferenceCount, setInferenceCount] = useState(0);
   const [lastFaultType, setLastFaultType] = useState<string | null>(null);
-  const [currentVibration, setCurrentVibration] = useState<number | null>(null);
   
-  const retryCount = useRef(0);
-  const isOfflineMode = useRef(false);
+  // High-Fidelity Telemetry States
+  const [currentVibration, setCurrentVibration] = useState<number | null>(null);
+  const [rpm, setRpm] = useState(0);
+  const [temp, setTemp] = useState(0);
+  const [healthScore, setHealthScore] = useState(100);
+  
   const classifierRef = useRef<any>(null);
   const vibrationBuffer = useRef<number[]>([]);
   const lastAiCallTimestamp = useRef(0);
@@ -57,7 +64,6 @@ export function MonitoringDashboard() {
   const db = useFirestore();
   const { toast } = useToast();
 
-  // Load Edge Impulse Model
   useEffect(() => {
     const script = document.createElement('script');
     script.src = '/edge-impulse-standalone.js';
@@ -75,12 +81,7 @@ export function MonitoringDashboard() {
       }
     };
     document.body.appendChild(script);
-    
-    return () => {
-      if (document.body.contains(script)) {
-        document.body.removeChild(script);
-      }
-    };
+    return () => { if (document.body.contains(script)) document.body.removeChild(script); };
   }, []);
 
   const readingsQuery = useMemo(() => {
@@ -94,96 +95,62 @@ export function MonitoringDashboard() {
     return (dbReadings || [])
       .map(doc => ({
         timestamp: typeof doc.timestamp === 'number' ? doc.timestamp : Date.now(),
-        value: doc.value
+        value: doc.value,
+        rpm: doc.rpm || 0,
+        temp: doc.temp || 0
       }))
       .sort((a, b) => a.timestamp - b.timestamp);
   }, [dbReadings]);
 
-  const sendToOneM2M = useCallback(async (vibrationValue: number) => {
-    if (isOfflineMode.current) return;
-    const url = 'http://localhost:8080/~/mn-cse/mn-name/Vibration_Sensor';
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 1000);
-      const response = await fetch(url, {
-        method: 'POST',
-        signal: controller.signal,
-        headers: {
-          'X-M2M-Origin': 'admin:admin',
-          'Content-Type': 'application/json;ty=4',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          "m2m:cin": {
-            "con": vibrationValue.toString(),
-            "lbl": ["vibration-analysis"]
-          }
-        })
-      });
-      clearTimeout(timeoutId);
-      if (response.ok) {
-        retryCount.current = 0;
-      } else {
-        throw new Error('Response not OK');
-      }
-    } catch (error) {
-      retryCount.current++;
-      if (retryCount.current >= MAX_RETRIES) {
-        isOfflineMode.current = true;
-        console.warn("🚀 System switching to 'Edge Survival Mode'. oneM2M background sync paused.");
-      }
+  // Health Score (HPI) Logic
+  useEffect(() => {
+    if (currentVibration) {
+      const vibPenalty = Math.max(0, (currentVibration - 50) * 0.5);
+      const tempPenalty = Math.max(0, (temp - 70) * 1);
+      const newScore = Math.max(0, Math.min(100, 100 - vibPenalty - tempPenalty));
+      setHealthScore(Math.round(newScore));
     }
-  }, []);
+  }, [currentVibration, temp]);
 
   const handleNewReading = useCallback(async (value: number) => {
     const timestamp = Date.now();
-    
-    // 1. Update the real-time reading immediately for a snappy UI
     setCurrentVibration(value);
+    
+    // Simulate OBD/Industrial multi-telemetry
+    const newRpm = 1200 + (Math.random() - 0.5) * 100;
+    const newTemp = 45 + (value * 0.2) + (Math.random() * 2);
+    setRpm(newRpm);
+    setTemp(newTemp);
 
-    // 2. standard oneM2M sync
-    sendToOneM2M(value);
-
-    // 3. Cloud persistence
     if (db) {
       addDoc(collection(db, 'readings'), {
         sensorId: 'vibration-01',
         value,
+        rpm: newRpm,
+        temp: newTemp,
         timestamp,
         machineId: 'CNC-MILL-01'
       });
     }
 
-    // 4. Local Edge Inference with Buffering
     vibrationBuffer.current.push(value);
-    
     if (vibrationBuffer.current.length >= EDGE_BUFFER_SIZE) {
       if (classifierRef.current) {
         try {
-          // Perform inference only when buffer is full
           const results = classifierRef.current.classify(vibrationBuffer.current);
-          
-          // Increment inference counter after successful operation
           setInferenceCount(prev => prev + 1);
-          console.log("Edge Inference Result:", results.classification);
-          
-          // If a fault is detected with high confidence (e.g., Bearing Wear > 0.8)
           if (results.classification && results.classification.bearing_wear > 0.8) {
             setLastFaultType("Bearing Wear");
             const now = Date.now();
-            
             if (now - lastAiCallTimestamp.current > MIN_AI_INTERVAL) {
-              console.log("🚀 Edge AI detected fault. Escalating to Gemini for maintenance plan...");
               setIsAnalyzing(true);
               lastAiCallTimestamp.current = now;
-
               const explanationResult = await generateAnomalyExplanation({
                 vibrationValue: value,
                 anomalyDetails: "Bearing Wear Detected by Edge AI",
                 machineType: 'CNC Milling Machine'
               });
-
-              const newAlert: AnomalyAlert = {
+              setAlerts(prev => [{
                 isAnomaly: true,
                 anomalyType: "Bearing Wear (Local AI)",
                 classification: "Component Fatigue",
@@ -193,45 +160,15 @@ export function MonitoringDashboard() {
                 timestamp,
                 advice: explanationResult.recommendation,
                 part_details: explanationResult.part_details
-              };
-
-              setAlerts(prev => [newAlert, ...prev]);
-              toast({
-                variant: "destructive",
-                title: "EDGE AI ALERT: Bearing Wear",
-                description: explanationResult.recommendation,
-              });
+              }, ...prev]);
               setIsAnalyzing(false);
-            } else {
-              console.log("🛡️ Edge AI is handling monitoring. Cloud AI is on standby to save quota.");
-              
-              const localAlert: AnomalyAlert = {
-                isAnomaly: true,
-                anomalyType: "Bearing Wear (Local Edge AI)",
-                classification: "Pending Technical Audit",
-                severity: "high",
-                recommendation: "Edge AI is handling monitoring. Cloud AI is on standby to save resources.",
-                id: crypto.randomUUID(),
-                timestamp,
-                advice: "Machine exhibiting patterns of bearing fatigue. Cooldown active for Cloud diagnostics."
-              };
-              
-              setAlerts(prev => [localAlert, ...prev]);
-              toast({
-                title: "Local Edge AI Detection",
-                description: "Bearing Wear (High Confidence). Cloud AI is on standby.",
-              });
             }
           }
-        } catch (err) {
-          console.error("Local inference failed:", err);
-        }
+        } catch (err) { console.error("Local inference failed:", err); }
       }
-      // Reset buffer after inference attempt or reaching limit
       vibrationBuffer.current = [];
     }
 
-    // 5. Threshold Trigger Logic (Cloud AI Fallback/Verification)
     if (value > thresholds.max || value < thresholds.min) {
       const now = Date.now();
       if (now - lastAiCallTimestamp.current > MIN_AI_INTERVAL) {
@@ -245,39 +182,25 @@ export function MonitoringDashboard() {
             thresholds,
             historicalContext: allReadings.slice(-5)
           });
-
           if (detectionResult.isAnomaly) {
-            const explanationResult: AnomalyExplanationOutput = await generateAnomalyExplanation({
+            const explanationResult = await generateAnomalyExplanation({
               vibrationValue: value,
               anomalyDetails: detectionResult.anomalyType || 'Excessive Vibration',
               machineType: 'CNC Milling Machine'
             });
-
-            const newAlert: AnomalyAlert = {
+            setAlerts(prev => [{
               ...detectionResult,
               id: crypto.randomUUID(),
               timestamp,
               advice: explanationResult.recommendation,
               part_details: explanationResult.part_details
-            };
-
-            setAlerts(prev => [newAlert, ...prev]);
-            toast({
-              variant: "destructive",
-              title: `${explanationResult.status.toUpperCase()}: ${detectionResult.anomalyType}`,
-              description: explanationResult.recommendation,
-            });
+            }, ...prev]);
           }
-        } catch (error) {
-          console.error("An error occurred during AI analysis:", error);
-        } finally {
-          setIsAnalyzing(false);
-        }
-      } else {
-        console.log("🛡️ High vibration detected. Cooldown active for Cloud AI.");
+        } catch (error) { console.error("AI analysis error:", error); }
+        finally { setIsAnalyzing(false); }
       }
     }
-  }, [allReadings, thresholds, db, toast, sendToOneM2M]);
+  }, [allReadings, thresholds, db, toast]);
 
   return (
     <SidebarProvider>
@@ -287,13 +210,9 @@ export function MonitoringDashboard() {
           <header className="flex h-16 shrink-0 items-center justify-between border-b px-6">
             <div className="flex items-center gap-2">
               <Activity className="text-accent h-6 w-6" />
-              <h1 className="text-xl font-bold tracking-tight font-headline">Industrial Sentinel</h1>
+              <h1 className="text-xl font-bold tracking-tight font-headline">Sentinel Core</h1>
             </div>
-            <ConnectionStatus 
-              isConnected={isConnected} 
-              onToggleConnection={setIsConnected} 
-              onNewReading={handleNewReading} 
-            />
+            <ConnectionStatus isConnected={isConnected} onToggleConnection={setIsConnected} onNewReading={handleNewReading} />
           </header>
 
           <main className="flex-1 overflow-y-auto p-6">
@@ -304,51 +223,49 @@ export function MonitoringDashboard() {
               inferenceCount={inferenceCount}
               lastFaultType={lastFaultType}
               currentValue={currentVibration}
+              healthScore={healthScore}
+              rpm={rpm}
+              temp={temp}
             />
 
             <Tabs defaultValue="monitor" className="mt-8 space-y-6">
-              <TabsList className="grid w-full grid-cols-4 lg:w-[500px]">
-                <TabsTrigger value="monitor" className="gap-2">
-                  <Gauge className="h-4 w-4" /> Monitor
-                </TabsTrigger>
-                <TabsTrigger value="alerts" className="gap-2">
-                  <Bell className="h-4 w-4" /> Alerts
-                </TabsTrigger>
-                <TabsTrigger value="reports" className="gap-2">
-                  <FileText className="h-4 w-4" /> Reports
-                </TabsTrigger>
-                <TabsTrigger value="settings" className="gap-2">
-                  <Settings className="h-4 w-4" /> Thresholds
-                </TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6 gap-2 bg-muted/20 p-1">
+                <TabsTrigger value="monitor" className="gap-2"><Gauge className="h-4 w-4" /> Monitor</TabsTrigger>
+                <TabsTrigger value="alerts" className="gap-2"><Bell className="h-4 w-4" /> Alerts</TabsTrigger>
+                <TabsTrigger value="insights" className="gap-2"><TrendingUp className="h-4 w-4" /> Insights</TabsTrigger>
+                <TabsTrigger value="certificate" className="gap-2"><ShieldCheck className="h-4 w-4" /> Proof</TabsTrigger>
+                <TabsTrigger value="reports" className="gap-2"><FileText className="h-4 w-4" /> Reports</TabsTrigger>
+                <TabsTrigger value="settings" className="gap-2"><Settings className="h-4 w-4" /> Settings</TabsTrigger>
               </TabsList>
 
               <TabsContent value="monitor" className="space-y-6">
-                <LiveSensorChart 
-                  readings={allReadings} 
-                  thresholds={thresholds} 
-                  inferenceCount={inferenceCount}
-                  lastFaultType={lastFaultType}
-                />
-              </TabsContent>
-
-              <TabsContent value="alerts">
-                <AlertList alerts={alerts} />
-              </TabsContent>
-
-              <TabsContent value="reports" className="space-y-6">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  <div className="lg:col-span-1">
-                    <ReportUploader />
-                  </div>
                   <div className="lg:col-span-2">
-                    <ReportList />
+                    <LiveSensorChart 
+                      readings={allReadings} 
+                      thresholds={thresholds} 
+                      inferenceCount={inferenceCount}
+                      lastFaultType={lastFaultType}
+                    />
+                  </div>
+                  <div className="lg:col-span-1 space-y-6">
+                    <AlertList alerts={alerts.slice(0, 5)} />
                   </div>
                 </div>
               </TabsContent>
 
-              <TabsContent value="settings">
-                <ThresholdSettings thresholds={thresholds} onUpdate={setThresholds} />
+              <TabsContent value="alerts"><AlertList alerts={alerts} /></TabsContent>
+              <TabsContent value="insights"><MaintenanceInsights readings={allReadings} alerts={alerts} /></TabsContent>
+              <TabsContent value="certificate"><HealthCertificate healthScore={healthScore} machineId="CNC-MILL-01" /></TabsContent>
+
+              <TabsContent value="reports" className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <ReportUploader />
+                  <div className="lg:col-span-2"><ReportList /></div>
+                </div>
               </TabsContent>
+
+              <TabsContent value="settings"><ThresholdSettings thresholds={thresholds} onUpdate={setThresholds} /></TabsContent>
             </Tabs>
           </main>
         </SidebarInset>
