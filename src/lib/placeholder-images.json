@@ -11,6 +11,12 @@
       "description": "Complex sensor data visualization",
       "imageUrl": "https://picsum.photos/seed/data2/800/600",
       "imageHint": "sensor data"
+    },
+    {
+      "id": "black-dragon-logo",
+      "description": "Black Dragon minimalist logo",
+      "imageUrl": "https://picsum.photos/seed/dragon-logo/200/200",
+      "imageHint": "black dragon"
     }
   ]
 }

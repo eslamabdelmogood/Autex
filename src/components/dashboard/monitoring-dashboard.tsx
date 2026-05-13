@@ -1,6 +1,8 @@
+
 "use client";
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { DashboardSidebar } from './dashboard-sidebar';
 import { ConnectionStatus } from './connection-status';
@@ -20,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase';
 import { collection, addDoc, query, orderBy, limit } from 'firebase/firestore';
 import { useCollection } from '@/firebase';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export type SensorReading = {
   timestamp: number;
@@ -63,6 +66,7 @@ export function MonitoringDashboard() {
   
   const db = useFirestore();
   const { toast } = useToast();
+  const logo = PlaceHolderImages.find(img => img.id === 'black-dragon-logo');
 
   useEffect(() => {
     const script = document.createElement('script');
@@ -208,9 +212,19 @@ export function MonitoringDashboard() {
         <DashboardSidebar />
         <SidebarInset className="flex flex-col bg-background">
           <header className="flex h-16 shrink-0 items-center justify-between border-b px-6">
-            <div className="flex items-center gap-2">
-              <Activity className="text-accent h-6 w-6" />
-              <h1 className="text-xl font-bold tracking-tight font-headline">Sentinel Core</h1>
+            <div className="flex items-center gap-3">
+              {logo && (
+                <div className="relative h-7 w-7 overflow-hidden rounded-md bg-black">
+                  <Image 
+                    src={logo.imageUrl} 
+                    alt="Black Dragon Logo" 
+                    fill 
+                    className="object-cover invert opacity-80"
+                    data-ai-hint={logo.imageHint}
+                  />
+                </div>
+              )}
+              <h1 className="text-xl font-bold tracking-tight font-headline">Black Dragon</h1>
             </div>
             <ConnectionStatus isConnected={isConnected} onToggleConnection={setIsConnected} onNewReading={handleNewReading} />
           </header>

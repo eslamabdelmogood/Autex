@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -72,7 +73,7 @@ export function HealthCertificate({ healthScore, machineId }: HealthCertificateP
                 <Activity className="h-4 w-4 text-muted-foreground" />
                 <div className="text-left">
                   <p className="text-[10px] text-muted-foreground uppercase font-bold">AI Validator</p>
-                  <p className="text-xs font-medium italic">Sentinel Edge Engine v4.2</p>
+                  <p className="text-xs font-medium italic">Black Dragon Edge Engine v4.2</p>
                 </div>
               </div>
             </div>
@@ -98,7 +99,7 @@ export function HealthCertificate({ healthScore, machineId }: HealthCertificateP
       <div className="bg-accent/10 p-4 rounded-xl border border-accent/20 flex items-start gap-4">
         <Activity className="h-6 w-6 text-accent shrink-0 mt-1" />
         <p className="text-xs text-muted-foreground leading-relaxed">
-          This certificate is generated using immutable blockchain-style hashing of your Firebase history. It provides verified proof of consistent engine performance, increasing resale value and ensuring regulatory compliance.
+          This certificate is generated using immutable blockchain-style hashing of your Black Dragon history. It provides verified proof of consistent engine performance, increasing resale value and ensuring regulatory compliance.
         </p>
       </div>
     </div>

@@ -1,5 +1,7 @@
+
 "use client";
 
+import Image from "next/image";
 import { 
   Sidebar, 
   SidebarContent, 
@@ -22,14 +24,27 @@ import {
   ShieldCheck,
   FileText
 } from "lucide-react";
+import { PlaceHolderImages } from "@/lib/placeholder-images";
 
 export function DashboardSidebar() {
+  const logo = PlaceHolderImages.find(img => img.id === 'black-dragon-logo');
+
   return (
     <Sidebar collapsible="icon" className="border-r border-border bg-card">
       <SidebarHeader className="h-16 flex items-center justify-center border-b">
-        <div className="flex items-center gap-2">
-          <Zap className="h-6 w-6 text-accent" />
-          <span className="font-black text-xl group-data-[collapsible=icon]:hidden tracking-tighter">SENTINEL</span>
+        <div className="flex items-center gap-3">
+          {logo && (
+            <div className="relative h-8 w-8 overflow-hidden rounded-md bg-black">
+              <Image 
+                src={logo.imageUrl} 
+                alt="Black Dragon Logo" 
+                fill 
+                className="object-cover invert opacity-80"
+                data-ai-hint={logo.imageHint}
+              />
+            </div>
+          )}
+          <span className="font-black text-xl group-data-[collapsible=icon]:hidden tracking-tighter">BLACK DRAGON</span>
         </div>
       </SidebarHeader>
       <SidebarContent>
