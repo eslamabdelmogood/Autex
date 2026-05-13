@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
@@ -14,7 +15,8 @@ import { ReportList } from './report-list';
 import { MaintenanceInsights } from './maintenance-insights';
 import { HealthCertificate } from './health-certificate';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Activity, Bell, Settings, Gauge, FileText, TrendingUp, ShieldCheck, History } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Activity, Bell, Settings, Gauge, FileText, TrendingUp, ShieldCheck, History, Languages } from 'lucide-react';
 import { detectAndClassifyAnomalies, DetectAndClassifyAnomaliesOutput } from '@/ai/flows/detect-and-classify-anomalies';
 import { generateAnomalyExplanation, AnomalyExplanationOutput } from '@/ai/flows/generate-anomaly-explanation';
 import { useToast } from '@/hooks/use-toast';
@@ -52,6 +54,7 @@ export function MonitoringDashboard() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [inferenceCount, setInferenceCount] = useState(0);
   const [lastFaultType, setLastFaultType] = useState<string | null>(null);
+  const [language, setLanguage] = useState<'en' | 'ar'>('en');
   
   // High-Fidelity Telemetry States
   const [currentVibration, setCurrentVibration] = useState<number | null>(null);
@@ -105,7 +108,6 @@ export function MonitoringDashboard() {
       .sort((a, b) => a.timestamp - b.timestamp);
   }, [dbReadings]);
 
-  // Health Score (HPI) Logic
   useEffect(() => {
     if (currentVibration) {
       const vibPenalty = Math.max(0, (currentVibration - 50) * 0.5);
@@ -119,7 +121,6 @@ export function MonitoringDashboard() {
     const timestamp = Date.now();
     setCurrentVibration(value);
     
-    // Simulate OBD/Industrial multi-telemetry
     const newRpm = 1200 + (Math.random() - 0.5) * 100;
     const newTemp = 45 + (value * 0.2) + (Math.random() * 2);
     setRpm(newRpm);
@@ -205,15 +206,50 @@ export function MonitoringDashboard() {
     }
   }, [allReadings, thresholds, db, toast]);
 
+  const toggleLanguage = () => {
+    setLanguage(prev => prev === 'en' ? 'ar' : 'en');
+  };
+
+  const translations = {
+    en: {
+      title: "Black Dragon",
+      monitor: "Monitor",
+      alerts: "Alerts",
+      insights: "Insights",
+      proof: "Proof",
+      reports: "Reports",
+      settings: "Settings",
+      edgeActive: "AI Edge Engine Active",
+      localSyncs: "Local Syncs",
+      fault: "Fault",
+      commandCenter: "Command Center"
+    },
+    ar: {
+      title: "التنين الأسود",
+      monitor: "المراقبة",
+      alerts: "التنبيهات",
+      insights: "البصيرة",
+      proof: "الإثبات",
+      reports: "التقارير",
+      settings: "الإعدادات",
+      edgeActive: "محرك الذكاء الاصطناعي نشط",
+      localSyncs: "مزامنات محلية",
+      fault: "خطأ",
+      commandCenter: "مركز القيادة"
+    }
+  };
+
+  const t = translations[language];
+
   return (
     <SidebarProvider>
-      <div className="flex w-full overflow-hidden">
-        <DashboardSidebar />
+      <div className="flex w-full overflow-hidden" dir={language === 'ar' ? 'rtl' : 'ltr'}>
+        <DashboardSidebar language={language} />
         <SidebarInset className="flex flex-col bg-background">
-          <header className="flex h-16 shrink-0 items-center justify-between border-b px-6">
+          <header className="flex h-16 shrink-0 items-center justify-between border-b px-4 md:px-6">
             <div className="flex items-center gap-3">
               {logo && (
-                <div className="relative h-7 w-7 overflow-hidden rounded-md bg-black">
+                <div className="relative h-7 w-7 overflow-hidden rounded-md bg-black hidden sm:block">
                   <Image 
                     src={logo.imageUrl} 
                     alt="Black Dragon Logo" 
@@ -224,12 +260,31 @@ export function MonitoringDashboard() {
                   />
                 </div>
               )}
-              <h1 className="text-xl font-bold tracking-tight font-headline">Black Dragon</h1>
+              <h1 className="text-lg md:text-xl font-bold tracking-tight font-headline">{t.title}</h1>
             </div>
-            <ConnectionStatus isConnected={isConnected} onToggleConnection={setIsConnected} onNewReading={handleNewReading} />
+            
+            <div className="flex items-center gap-2 md:gap-4">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={toggleLanguage}
+                className="h-9 w-9 text-muted-foreground hover:text-accent"
+                title={language === 'en' ? 'Switch to Arabic' : 'التبديل إلى الإنجليزية'}
+              >
+                <Languages className="h-5 w-5" />
+              </Button>
+              <div className="hidden sm:flex">
+                <ConnectionStatus isConnected={isConnected} onToggleConnection={setIsConnected} onNewReading={handleNewReading} language={language} />
+              </div>
+            </div>
           </header>
 
-          <main className="flex-1 overflow-y-auto p-6">
+          <main className="flex-1 overflow-y-auto p-4 md:p-6">
+            {/* Mobile Connection Status */}
+            <div className="sm:hidden mb-4">
+              <ConnectionStatus isConnected={isConnected} onToggleConnection={setIsConnected} onNewReading={handleNewReading} language={language} />
+            </div>
+
             <KpiCards 
               readings={allReadings} 
               isAnalyzing={isAnalyzing || readingsLoading} 
@@ -240,17 +295,20 @@ export function MonitoringDashboard() {
               healthScore={healthScore}
               rpm={rpm}
               temp={temp}
+              language={language}
             />
 
             <Tabs defaultValue="monitor" className="mt-8 space-y-6">
-              <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6 gap-2 bg-muted/20 p-1">
-                <TabsTrigger value="monitor" className="gap-2"><Gauge className="h-4 w-4" /> Monitor</TabsTrigger>
-                <TabsTrigger value="alerts" className="gap-2"><Bell className="h-4 w-4" /> Alerts</TabsTrigger>
-                <TabsTrigger value="insights" className="gap-2"><TrendingUp className="h-4 w-4" /> Insights</TabsTrigger>
-                <TabsTrigger value="certificate" className="gap-2"><ShieldCheck className="h-4 w-4" /> Proof</TabsTrigger>
-                <TabsTrigger value="reports" className="gap-2"><FileText className="h-4 w-4" /> Reports</TabsTrigger>
-                <TabsTrigger value="settings" className="gap-2"><Settings className="h-4 w-4" /> Settings</TabsTrigger>
-              </TabsList>
+              <div className="w-full overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+                <TabsList className="flex w-max lg:w-full min-w-full lg:grid lg:grid-cols-6 gap-2 bg-muted/20 p-1">
+                  <TabsTrigger value="monitor" className="gap-2 flex-1"><Gauge className="h-4 w-4" /> {t.monitor}</TabsTrigger>
+                  <TabsTrigger value="alerts" className="gap-2 flex-1"><Bell className="h-4 w-4" /> {t.alerts}</TabsTrigger>
+                  <TabsTrigger value="insights" className="gap-2 flex-1"><TrendingUp className="h-4 w-4" /> {t.insights}</TabsTrigger>
+                  <TabsTrigger value="certificate" className="gap-2 flex-1"><ShieldCheck className="h-4 w-4" /> {t.proof}</TabsTrigger>
+                  <TabsTrigger value="reports" className="gap-2 flex-1"><FileText className="h-4 w-4" /> {t.reports}</TabsTrigger>
+                  <TabsTrigger value="settings" className="gap-2 flex-1"><Settings className="h-4 w-4" /> {t.settings}</TabsTrigger>
+                </TabsList>
+              </div>
 
               <TabsContent value="monitor" className="space-y-6">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -260,26 +318,27 @@ export function MonitoringDashboard() {
                       thresholds={thresholds} 
                       inferenceCount={inferenceCount}
                       lastFaultType={lastFaultType}
+                      language={language}
                     />
                   </div>
                   <div className="lg:col-span-1 space-y-6">
-                    <AlertList alerts={alerts.slice(0, 5)} />
+                    <AlertList alerts={alerts.slice(0, 5)} language={language} />
                   </div>
                 </div>
               </TabsContent>
 
-              <TabsContent value="alerts"><AlertList alerts={alerts} /></TabsContent>
-              <TabsContent value="insights"><MaintenanceInsights readings={allReadings} alerts={alerts} /></TabsContent>
-              <TabsContent value="certificate"><HealthCertificate healthScore={healthScore} machineId="CNC-MILL-01" /></TabsContent>
+              <TabsContent value="alerts"><AlertList alerts={alerts} language={language} /></TabsContent>
+              <TabsContent value="insights"><MaintenanceInsights readings={allReadings} alerts={alerts} language={language} /></TabsContent>
+              <TabsContent value="certificate"><HealthCertificate healthScore={healthScore} machineId="CNC-MILL-01" language={language} /></TabsContent>
 
               <TabsContent value="reports" className="space-y-6">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  <ReportUploader />
-                  <div className="lg:col-span-2"><ReportList /></div>
+                  <ReportUploader language={language} />
+                  <div className="lg:col-span-2"><ReportList language={language} /></div>
                 </div>
               </TabsContent>
 
-              <TabsContent value="settings"><ThresholdSettings thresholds={thresholds} onUpdate={setThresholds} /></TabsContent>
+              <TabsContent value="settings"><ThresholdSettings thresholds={thresholds} onUpdate={setThresholds} language={language} /></TabsContent>
             </Tabs>
           </main>
         </SidebarInset>

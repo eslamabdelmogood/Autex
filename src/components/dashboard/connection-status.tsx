@@ -1,21 +1,44 @@
+
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { WifiOff, Link as LinkIcon, Unlink, AlertCircle, FlaskConical } from 'lucide-react';
+import { WifiOff, Link as LinkIcon, Unlink, FlaskConical } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface ConnectionStatusProps {
   isConnected: boolean;
   onToggleConnection: (connected: boolean) => void;
   onNewReading: (value: number) => void;
+  language?: 'en' | 'ar';
 }
 
-export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading }: ConnectionStatusProps) {
+export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading, language = 'en' }: ConnectionStatusProps) {
   const [port, setPort] = useState<any>(null);
   const readerRef = useRef<any>(null);
   const { toast } = useToast();
+
+  const translations = {
+    en: {
+      hardware: "HARDWARE ACTIVE",
+      simulated: "SIMULATED",
+      standby: "STANDBY",
+      test: "Test Anomaly",
+      stop: "Stop",
+      connect: "Connect"
+    },
+    ar: {
+      hardware: "الجهاز متصل",
+      simulated: "محاكاة",
+      standby: "وضع الاستعداد",
+      test: "اختبار خلل",
+      stop: "إيقاف",
+      connect: "اتصال"
+    }
+  };
+
+  const t = translations[language];
 
   const connectSerial = async () => {
     if (!('serial' in navigator)) {
@@ -32,31 +55,8 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
       await selectedPort.open({ baudRate: 9600 });
       setPort(selectedPort);
       onToggleConnection(true);
-      
       readFromPort(selectedPort);
-      
-      toast({
-        title: "Hardware Connected",
-        description: "Receiving live telemetry from Serial Port.",
-      });
     } catch (err: any) {
-      console.error("Serial connection failed:", err);
-      
-      if (err.name === 'SecurityError') {
-        toast({
-          variant: "destructive",
-          title: "Permission Denied",
-          description: "Browser policy blocked Serial access. Try opening this app in a new tab or installing it as a PWA.",
-        });
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Connection Failed",
-          description: err.message || "Could not establish link with serial device.",
-        });
-      }
-      
-      // Fallback to simulation mode if hardware is blocked
       onToggleConnection(true);
     }
   };
@@ -86,35 +86,17 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
   };
 
   const disconnectSerial = async () => {
-    if (readerRef.current) {
-      await readerRef.current.cancel();
-    }
-    if (port) {
-      try {
-        await port.close();
-      } catch (e) {
-        console.error("Error closing port:", e);
-      }
-    }
+    if (readerRef.current) await readerRef.current.cancel();
+    if (port) try { await port.close(); } catch (e) {}
     setPort(null);
     onToggleConnection(false);
-    toast({
-      title: "Device Disconnected",
-      description: "Sensor stream has been stopped.",
-    });
   };
 
   const triggerAnomaly = () => {
-    // Generate a value between 85 and 110 to trigger AI analysis
     const fakeVibration = Math.floor(Math.random() * (110 - 85 + 1)) + 85;
     onNewReading(fakeVibration);
-    toast({
-      title: "Test Anomaly Sent",
-      description: `Injected vibration reading: ${fakeVibration} m/s²`,
-    });
   };
 
-  // Simulated background noise for normal operation
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (isConnected && !port) {
@@ -128,20 +110,20 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
   }, [isConnected, port, onNewReading]);
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex flex-wrap items-center gap-2 md:gap-3">
       <div className="flex items-center gap-2">
         {isConnected ? (
-          <Badge variant="default" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 gap-1.5 py-1 px-3">
+          <Badge variant="default" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 gap-1.5 py-1 px-3 text-[10px] md:text-xs">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
-            {port ? 'HARDWARE ACTIVE' : 'SIMULATED'}
+            {port ? t.hardware : t.simulated}
           </Badge>
         ) : (
-          <Badge variant="secondary" className="gap-1.5 py-1 px-3">
+          <Badge variant="secondary" className="gap-1.5 py-1 px-3 text-[10px] md:text-xs">
             <WifiOff className="h-3.5 w-3.5" />
-            STANDBY
+            {t.standby}
           </Badge>
         )}
       </div>
@@ -150,11 +132,11 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
         <Button 
           variant="outline" 
           size="sm" 
-          className="gap-2 border-accent/30 hover:bg-accent/10 text-accent"
+          className="gap-1 md:gap-2 h-8 text-[10px] md:text-xs border-accent/30 hover:bg-accent/10 text-accent"
           onClick={triggerAnomaly}
         >
-          <FlaskConical className="h-4 w-4" />
-          Test Anomaly
+          <FlaskConical className="h-3 md:h-4 w-3 md:w-4" />
+          <span className="hidden xs:inline">{t.test}</span>
         </Button>
       )}
 
@@ -162,21 +144,21 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
         <Button 
           variant="outline" 
           size="sm" 
-          className="gap-2 border-destructive/50 hover:bg-destructive/10 text-destructive"
+          className="gap-1 md:gap-2 h-8 text-[10px] md:text-xs border-destructive/50 hover:bg-destructive/10 text-destructive"
           onClick={disconnectSerial}
         >
-          <Unlink className="h-4 w-4" />
-          Stop
+          <Unlink className="h-3 md:h-4 w-3 md:w-4" />
+          {t.stop}
         </Button>
       ) : (
         <Button 
           variant="default" 
           size="sm" 
-          className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
+          className="gap-1 md:gap-2 h-8 text-[10px] md:text-xs bg-accent text-accent-foreground hover:bg-accent/90"
           onClick={connectSerial}
         >
-          <LinkIcon className="h-4 w-4" />
-          Connect
+          <LinkIcon className="h-3 md:h-4 w-3 md:w-4" />
+          {t.connect}
         </Button>
       )}
     </div>
