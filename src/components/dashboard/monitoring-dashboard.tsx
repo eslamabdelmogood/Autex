@@ -28,8 +28,7 @@ import {
   Languages, 
   Cpu, 
   Binary,
-  Zap,
-  Microchip
+  Zap
 } from 'lucide-react';
 import { detectAndClassifyAnomalies, DetectAndClassifyAnomaliesOutput } from '@/ai/flows/detect-and-classify-anomalies';
 import { generateAnomalyExplanation, AnomalyExplanationOutput } from '@/ai/flows/generate-anomaly-explanation';
@@ -305,7 +304,7 @@ export function MonitoringDashboard() {
                       size="icon" 
                       className={`h-9 w-9 transition-all ${hasGreenBox ? 'text-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'text-muted-foreground/40 opacity-50 grayscale cursor-help'}`}
                     >
-                      <Microchip className={`h-5 w-5 ${hasGreenBox ? 'animate-pulse' : ''}`} />
+                      <Cpu className={`h-5 w-5 ${hasGreenBox ? 'animate-pulse' : ''}`} />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent className="max-w-[250px] p-3 text-[10px] md:text-xs">

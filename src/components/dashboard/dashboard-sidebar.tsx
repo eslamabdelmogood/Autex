@@ -23,7 +23,7 @@ import {
   TrendingUp,
   ShieldCheck,
   FileText,
-  Microchip
+  Cpu
 } from "lucide-react";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 
@@ -123,10 +123,12 @@ export function DashboardSidebar({ language = 'en', hasGreenBox = false }: Dashb
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton tooltip={t.proof}>
-                  <ShieldCheck className="h-4 w-4 text-emerald-500" />
-                  <span className="font-medium">{t.proof}</span>
-                </SidebarMenuButton>
+                <SidebarMenuItem>
+                  <SidebarMenuButton tooltip={t.proof}>
+                    <ShieldCheck className="h-4 w-4 text-emerald-500" />
+                    <span className="font-medium">{t.proof}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton tooltip={t.manuals}>
@@ -150,7 +152,7 @@ export function DashboardSidebar({ language = 'en', hasGreenBox = false }: Dashb
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton tooltip={hasGreenBox ? t.greenBoxActive : t.greenBox}>
-                  <Microchip className={`h-4 w-4 ${hasGreenBox ? 'text-emerald-500' : 'text-muted-foreground/40'}`} />
+                  <Cpu className={`h-4 w-4 ${hasGreenBox ? 'text-emerald-500' : 'text-muted-foreground/40'}`} />
                   <span className={`font-medium ${hasGreenBox ? 'text-emerald-500' : 'text-muted-foreground/40'}`}>
                     {hasGreenBox ? t.greenBoxActive : t.greenBox}
                   </span>
