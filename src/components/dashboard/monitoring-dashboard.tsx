@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
@@ -219,6 +218,7 @@ export function MonitoringDashboard() {
                     src={logo.imageUrl} 
                     alt="Black Dragon Logo" 
                     fill 
+                    sizes="(max-width: 768px) 100vw, 50vw"
                     className="object-cover invert opacity-80"
                     data-ai-hint={logo.imageHint}
                   />

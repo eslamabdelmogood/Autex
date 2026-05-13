@@ -1,4 +1,3 @@
-
 "use client";
 
 import Image from "next/image";
@@ -39,6 +38,7 @@ export function DashboardSidebar() {
                 src={logo.imageUrl} 
                 alt="Black Dragon Logo" 
                 fill 
+                sizes="(max-width: 768px) 100vw, 50vw"
                 className="object-cover invert opacity-80"
                 data-ai-hint={logo.imageHint}
               />
