@@ -7,29 +7,49 @@ import {
   Firestore, 
   persistentLocalCache, 
   persistentMultipleTabManager,
-  CACHE_SIZE_UNLIMITED
+  getFirestore
 } from 'firebase/firestore';
 import { getAuth, Auth } from 'firebase/auth';
 import { firebaseConfig } from './config';
+
+let appInstance: FirebaseApp | undefined;
+let dbInstance: Firestore | undefined;
+let authInstance: Auth | undefined;
 
 export function initializeFirebase(): {
   app: FirebaseApp;
   db: Firestore;
   auth: Auth;
 } {
-  const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-  
-  // Initialize Firestore with 40MB persistent cache for "Edge Survival" mode
-  const db = initializeFirestore(app, {
-    localCache: persistentLocalCache({
-      tabManager: persistentMultipleTabManager(),
-      cacheSizeBytes: 40 * 1024 * 1024 // 40 MB limit
-    })
-  });
-  
-  const auth = getAuth(app);
+  // Ensure we only initialize once
+  if (!appInstance) {
+    appInstance = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+  }
 
-  return { app, db, auth };
+  if (!dbInstance) {
+    try {
+      // Attempt to initialize with specific persistence settings
+      dbInstance = initializeFirestore(appInstance, {
+        localCache: persistentLocalCache({
+          tabManager: persistentMultipleTabManager(),
+          cacheSizeBytes: 40 * 1024 * 1024 // 40 MB limit for "Edge Survival"
+        })
+      });
+    } catch (e) {
+      // If already initialized (e.g. during HMR), get the existing instance
+      dbInstance = getFirestore(appInstance);
+    }
+  }
+
+  if (!authInstance) {
+    authInstance = getAuth(appInstance);
+  }
+
+  return { 
+    app: appInstance, 
+    db: dbInstance, 
+    auth: authInstance 
+  };
 }
 
 export * from './provider';
