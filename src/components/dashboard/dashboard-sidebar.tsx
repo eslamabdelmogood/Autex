@@ -1,4 +1,3 @@
-
 "use client";
 
 import Image from "next/image";
@@ -38,33 +37,33 @@ export function DashboardSidebar({ language = 'en', hasGreenBox = false }: Dashb
   const translations = {
     en: {
       brand: "BLACK DRAGON",
-      core: "Core Operations",
+      core: "Vehicle Operations",
       command: "Command Center",
-      incident: "Incident Log",
-      roi: "ROI Insights",
-      compliance: "Compliance",
-      proof: "Proof of Condition",
-      manuals: "Archived Manuals",
-      ledger: "System Ledger",
-      connectivity: "Connectivity",
-      cloud: "Cloud Sync Active",
-      config: "Configuration",
+      incident: "Diagnostic Log",
+      roi: "Fuel & ROI Insights",
+      compliance: "Certification",
+      proof: "Vehicle Proof",
+      manuals: "Service Manuals",
+      ledger: "Maintenance History",
+      connectivity: "OBD Connectivity",
+      cloud: "Black Box Active",
+      config: "Scanner Config",
       greenBox: "Green Box: Offline",
-      greenBoxActive: "Green Box: Online"
+      greenBoxActive: "Green Box: Active"
     },
     ar: {
       brand: "التنين الأسود",
-      core: "العمليات الأساسية",
+      core: "عمليات المركبة",
       command: "مركز القيادة",
-      incident: "سجل الحوادث",
-      roi: "رؤى العائد",
-      compliance: "الامتثال",
-      proof: "إثبات الحالة",
-      manuals: "الأرشيف التقني",
-      ledger: "دفتر النظام",
-      connectivity: "الاتصال",
-      cloud: "مزامنة سحابية نشطة",
-      config: "الإعدادات",
+      incident: "سجل التشخيص",
+      roi: "رؤى الوقود والعائد",
+      compliance: "الشهادات",
+      proof: "إثبات المركبة",
+      manuals: "كتيبات الخدمة",
+      ledger: "تاريخ الصيانة",
+      connectivity: "اتصال OBD",
+      cloud: "الصندوق الأسود نشط",
+      config: "إعدادات الماسح",
       greenBox: "الصندوق الأخضر: متوقف",
       greenBoxActive: "الصندوق الأخضر: نشط"
     }
@@ -84,7 +83,7 @@ export function DashboardSidebar({ language = 'en', hasGreenBox = false }: Dashb
                 fill 
                 sizes="(max-width: 768px) 100vw, 50vw"
                 className="object-cover invert opacity-80"
-                data-ai-hint={logo.imageHint}
+                data-ai-hint="black dragon"
               />
             </div>
           )}
@@ -123,12 +122,10 @@ export function DashboardSidebar({ language = 'en', hasGreenBox = false }: Dashb
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton tooltip={t.proof}>
-                    <ShieldCheck className="h-4 w-4 text-emerald-500" />
-                    <span className="font-medium">{t.proof}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                <SidebarMenuButton tooltip={t.proof}>
+                  <ShieldCheck className="h-4 w-4 text-emerald-500" />
+                  <span className="font-medium">{t.proof}</span>
+                </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton tooltip={t.manuals}>

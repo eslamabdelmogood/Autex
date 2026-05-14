@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -25,30 +24,30 @@ export function HealthCertificate({ healthScore, machineId, language = 'en' }: H
 
   const translations = {
     en: {
-      proof: "Proof of Condition",
-      certified: "Certified Machine Health Document",
-      asset: "Asset Identifier",
-      index: "Health Index",
-      status: "Status",
+      proof: "Vehicle Proof of Condition",
+      certified: "Certified Vehicle Health Document",
+      asset: "Vehicle VIN / Identifier",
+      index: "Vehicle Health Index",
+      status: "Certification Status",
       issued: "Issued On",
-      validator: "AI Validator",
-      download: "Download PDF",
-      sign: "Sign Report",
-      certified_label: "Certified",
-      compliance_text: "This certificate is generated using immutable blockchain-style hashing of your Black Dragon history. It provides verified proof of consistent engine performance, increasing resale value and ensuring regulatory compliance."
+      validator: "AI Engine Validator",
+      download: "Export PDF",
+      sign: "Sign Digital Report",
+      certified_label: "Certified Health",
+      compliance_text: "This certificate is generated using immutable Black Box hashing. It provides verified proof of consistent engine performance, increasing resale value and ensuring regulatory compliance for high-value assets."
     },
     ar: {
-      proof: "إثبات حالة المعدة",
-      certified: "وثيقة صحة المعدة المعتمدة",
-      asset: "معرف الأصل",
-      index: "مؤشر الصحة",
-      status: "الحالة",
+      proof: "إثبات حالة المركبة",
+      certified: "وثيقة صحة المركبة المعتمدة",
+      asset: "معرف المركبة / VIN",
+      index: "مؤشر صحة المركبة",
+      status: "حالة الاعتماد",
       issued: "تاريخ الإصدار",
-      validator: "المدقق الذكي",
-      download: "تحميل PDF",
+      validator: "مدقق الذكاء الاصطناعي",
+      download: "تصدير PDF",
       sign: "توقيع التقرير",
-      certified_label: "معتمد",
-      compliance_text: "يتم إنشاء هذه الشهادة باستخدام تشفير ثابت لتاريخ التنين الأسود الخاص بك. وهي توفر إثباتًا موثقًا لأداء المحرك المتسق، مما يزيد من قيمة إعادة البيع ويضمن الامتثال التنظيمي."
+      certified_label: "صحة معتمدة",
+      compliance_text: "يتم إنشاء هذه الشهادة باستخدام تشفير الصندوق الأسود الثابت. وهي توفر إثباتًا موثقًا لأداء المحرك، مما يزيد من قيمة إعادة البيع ويضمن الامتثال التنظيمي."
     }
   };
 
@@ -103,7 +102,7 @@ export function HealthCertificate({ healthScore, machineId, language = 'en' }: H
                 <Activity className="h-4 w-4 text-muted-foreground" />
                 <div className="text-left rtl:text-right">
                   <p className="text-[9px] md:text-[10px] text-muted-foreground uppercase font-bold">{t.validator}</p>
-                  <p className="text-[10px] md:text-xs font-medium italic">Black Dragon Edge Engine v4.2</p>
+                  <p className="text-[10px] md:text-xs font-medium italic">Dragon Edge Automotive v4.2</p>
                 </div>
               </div>
             </div>

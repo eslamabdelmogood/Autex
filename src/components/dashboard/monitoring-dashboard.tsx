@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
@@ -69,7 +68,6 @@ export function MonitoringDashboard() {
   const [lastFaultType, setLastFaultType] = useState<string | null>(null);
   const [language, setLanguage] = useState<'en' | 'ar'>('en');
   
-  // High-Fidelity Telemetry States
   const [currentVibration, setCurrentVibration] = useState<number | null>(null);
   const [rpm, setRpm] = useState(0);
   const [temp, setTemp] = useState(0);
@@ -84,7 +82,6 @@ export function MonitoringDashboard() {
   const { toast } = useToast();
   const logo = PlaceHolderImages.find(img => img.id === 'black-dragon-logo');
 
-  // Fetch Green Box Status from User Profile
   const userProfileRef = useMemo(() => {
     if (!db || !user) return null;
     return doc(db, 'users', user.uid);
@@ -103,10 +100,9 @@ export function MonitoringDashboard() {
           const classifier = new (window as any).EdgeImpulseClassifier();
           await classifier.init();
           classifierRef.current = classifier;
-          console.log("✅ Edge Impulse Model Loaded!");
         }
       } catch (err) {
-        console.error("❌ Failed to initialize Edge Impulse classifier:", err);
+        console.error("Failed to load edge model:", err);
       }
     };
     document.body.appendChild(script);
@@ -134,7 +130,7 @@ export function MonitoringDashboard() {
   useEffect(() => {
     if (currentVibration) {
       const vibPenalty = Math.max(0, (currentVibration - 50) * 0.5);
-      const tempPenalty = Math.max(0, (temp - 70) * 1);
+      const tempPenalty = Math.max(0, (temp - 95) * 1.5);
       const newScore = Math.max(0, Math.min(100, 100 - vibPenalty - tempPenalty));
       setHealthScore(Math.round(newScore));
     }
@@ -145,18 +141,18 @@ export function MonitoringDashboard() {
     setCurrentVibration(value);
     
     const newRpm = 1200 + (Math.random() - 0.5) * 100;
-    const newTemp = 45 + (value * 0.2) + (Math.random() * 2);
+    const newTemp = 85 + (value * 0.1) + (Math.random() * 2);
     setRpm(newRpm);
     setTemp(newTemp);
 
     if (db) {
       addDoc(collection(db, 'readings'), {
-        sensorId: 'vibration-01',
+        sensorId: 'OBD-VIB-01',
         value,
         rpm: newRpm,
         temp: newTemp,
         timestamp,
-        machineId: 'CNC-MILL-01'
+        machineId: 'VIN-DRAGON-001'
       });
     }
 
@@ -166,21 +162,21 @@ export function MonitoringDashboard() {
         try {
           const results = classifierRef.current.classify(vibrationBuffer.current);
           setInferenceCount(prev => prev + 1);
-          if (results.classification && results.classification.bearing_wear > 0.8) {
-            setLastFaultType("Bearing Wear");
+          if (results.classification && results.classification.misfire > 0.8) {
+            setLastFaultType("Engine Misfire");
             const now = Date.now();
             if (now - lastAiCallTimestamp.current > MIN_AI_INTERVAL) {
               setIsAnalyzing(true);
               lastAiCallTimestamp.current = now;
               const explanationResult = await generateAnomalyExplanation({
                 vibrationValue: value,
-                anomalyDetails: "Bearing Wear Detected by Edge AI",
-                machineType: 'CNC Milling Machine'
+                anomalyDetails: "Engine Misfire detected by Edge Engine",
+                machineType: 'V8 Performance Engine'
               });
               setAlerts(prev => [{
                 isAnomaly: true,
-                anomalyType: "Bearing Wear (Local AI)",
-                classification: "Component Fatigue",
+                anomalyType: "Misfire (Edge AI)",
+                classification: "Ignition Malfunction",
                 severity: "high",
                 recommendation: explanationResult.recommendation,
                 id: crypto.randomUUID(),
@@ -191,7 +187,7 @@ export function MonitoringDashboard() {
               setIsAnalyzing(false);
             }
           }
-        } catch (err) { console.error("Local inference failed:", err); }
+        } catch (err) {}
       }
       vibrationBuffer.current = [];
     }
@@ -203,7 +199,7 @@ export function MonitoringDashboard() {
         lastAiCallTimestamp.current = now;
         try {
           const detectionResult = await detectAndClassifyAnomalies({
-            sensorId: 'vibration-01',
+            sensorId: 'OBD-RPM-01',
             value,
             timestamp,
             thresholds,
@@ -212,8 +208,8 @@ export function MonitoringDashboard() {
           if (detectionResult.isAnomaly) {
             const explanationResult = await generateAnomalyExplanation({
               vibrationValue: value,
-              anomalyDetails: detectionResult.anomalyType || 'Excessive Vibration',
-              machineType: 'CNC Milling Machine'
+              anomalyDetails: detectionResult.anomalyType || 'Engine Instability',
+              machineType: 'Vehicle Engine'
             });
             setAlerts(prev => [{
               ...detectionResult,
@@ -223,11 +219,11 @@ export function MonitoringDashboard() {
               part_details: explanationResult.part_details
             }, ...prev]);
           }
-        } catch (error) { console.error("AI analysis error:", error); }
+        } catch (error) {}
         finally { setIsAnalyzing(false); }
       }
     }
-  }, [allReadings, thresholds, db, toast]);
+  }, [allReadings, thresholds, db]);
 
   const toggleLanguage = () => {
     setLanguage(prev => prev === 'en' ? 'ar' : 'en');
@@ -235,38 +231,38 @@ export function MonitoringDashboard() {
 
   const translations = {
     en: {
-      title: "Black Dragon",
-      monitor: "Monitor",
-      alerts: "Alerts",
-      insights: "Insights",
-      proof: "Proof",
-      reports: "Reports",
-      settings: "Settings",
-      greenBox: "Industrial Precision Mode - Connect Green Box",
-      greenBoxActive: "Green Box Active - High Precision Enabled",
-      greenBoxTeaser: "Coming soon... Increase inspection accuracy to 99.9% with real-time processing (1ms) via the external Green Box unit. Predict collapses before they occur with industrial sensors.",
-      advancedAnalysis: "Advanced Analysis",
-      edgeActive: "AI Edge Engine Active",
-      localSyncs: "Local Syncs",
+      title: "Black Dragon Automotive",
+      monitor: "Engine Monitor",
+      alerts: "Diagnostic Alerts",
+      insights: "Vehicle Insights",
+      proof: "Condition Proof",
+      reports: "Service Logs",
+      settings: "OBD Config",
+      greenBox: "Precision Mode - Connect Green Box",
+      greenBoxActive: "Green Box Active - High-Res Telemetry",
+      greenBoxTeaser: "Coming soon... Increase diagnostic accuracy to 99.9% with 1ms real-time processing via the Green Box OBD-II bridge.",
+      advancedAnalysis: "Adv. Telemetry",
+      edgeActive: "Vehicle Edge AI Active",
+      localSyncs: "Edge Inferences",
       fault: "Fault",
-      commandCenter: "Command Center"
+      commandCenter: "Vehicle Command Center"
     },
     ar: {
-      title: "التنين الأسود",
-      monitor: "المراقبة",
-      alerts: "التنبيهات",
-      insights: "البصيرة",
-      proof: "الإثبات",
-      reports: "التقارير",
-      settings: "الإعدادات",
-      greenBox: "وضع الدقة الصناعية - اربط الصندوق الأخضر",
-      greenBoxActive: "الصندوق الأخضر نشط - تم تفعيل الدقة العالية",
-      greenBoxTeaser: "قريباً... ارفع دقة الفحص إلى 99.9% مع معالجة فورية (1 ملي ثانية) عبر وحدة الصندوق الأخضر الخارجية. توقع الانهيارات قبل حدوثها بحساسات صناعية.",
-      advancedAnalysis: "تحليل متقدم",
-      edgeActive: "محرك الذكاء الاصطناعي نشط",
-      localSyncs: "مزامنات محلية",
-      fault: "خطأ",
-      commandCenter: "مركز القيادة"
+      title: "التنين الأسود للسيارات",
+      monitor: "مراقب المحرك",
+      alerts: "تنبيهات التشخيص",
+      insights: "بصيرة المركبة",
+      proof: "إثبات الحالة",
+      reports: "سجلات الخدمة",
+      settings: "إعدادات OBD",
+      greenBox: "وضع الدقة - اربط الصندوق الأخضر",
+      greenBoxActive: "الصندوق الأخضر نشط - تفعيل القياس العالي",
+      greenBoxTeaser: "قريباً... ارفع دقة التشخيص إلى 99.9% مع معالجة 1 ملي ثانية عبر جسر الصندوق الأخضر.",
+      advancedAnalysis: "قياس متقدم",
+      edgeActive: "الذكاء الاصطناعي للمركبة نشط",
+      localSyncs: "استدلالات الحافة",
+      fault: "خلل",
+      commandCenter: "مركز قيادة المركبة"
     }
   };
 
@@ -287,22 +283,21 @@ export function MonitoringDashboard() {
                     fill 
                     sizes="(max-width: 768px) 100vw, 50vw"
                     className="object-cover invert opacity-80"
-                    data-ai-hint={logo.imageHint}
+                    data-ai-hint="black dragon"
                   />
                 </div>
               )}
-              <h1 className="text-lg md:text-xl font-bold tracking-tight font-headline">{t.title}</h1>
+              <h1 className="text-lg md:text-xl font-bold tracking-tight">{t.title}</h1>
             </div>
             
             <div className="flex items-center gap-2 md:gap-4">
-              {/* Green Box Indicator */}
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className={`h-9 w-9 transition-all ${hasGreenBox ? 'text-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'text-muted-foreground/40 opacity-50 grayscale cursor-help'}`}
+                      className={`h-9 w-9 transition-all ${hasGreenBox ? 'text-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'text-muted-foreground/40 opacity-50 grayscale'}`}
                     >
                       <Cpu className={`h-5 w-5 ${hasGreenBox ? 'animate-pulse' : ''}`} />
                     </Button>
@@ -314,13 +309,7 @@ export function MonitoringDashboard() {
                 </Tooltip>
               </TooltipProvider>
 
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={toggleLanguage}
-                className="h-9 w-9 text-muted-foreground hover:text-accent"
-                title={language === 'en' ? 'Switch to Arabic' : 'التبديل إلى الإنجليزية'}
-              >
+              <Button variant="ghost" size="icon" onClick={toggleLanguage} className="h-9 w-9 text-muted-foreground hover:text-accent">
                 <Languages className="h-5 w-5" />
               </Button>
               <div className="hidden sm:flex">
@@ -359,49 +348,24 @@ export function MonitoringDashboard() {
               <TabsContent value="monitor" className="space-y-6">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <div className="lg:col-span-2">
-                    <LiveSensorChart 
-                      readings={allReadings} 
-                      thresholds={thresholds} 
-                      inferenceCount={inferenceCount}
-                      lastFaultType={lastFaultType}
-                      language={language}
-                    />
+                    <LiveSensorChart readings={allReadings} thresholds={thresholds} inferenceCount={inferenceCount} lastFaultType={lastFaultType} language={language} />
                   </div>
-                  <div className="lg:col-span-1 space-y-6">
-                    <AlertList alerts={alerts.slice(0, 5)} language={language} />
+                  <div className="lg:col-span-1">
+                    <AlertList alerts={alerts.slice(0, 5)} />
                   </div>
                 </div>
               </TabsContent>
 
-              <TabsContent value="alerts"><AlertList alerts={alerts} language={language} /></TabsContent>
-              <TabsContent value="insights"><MaintenanceInsights readings={allReadings} alerts={alerts} language={language} /></TabsContent>
-              <TabsContent value="certificate"><HealthCertificate healthScore={healthScore} machineId="CNC-MILL-01" language={language} /></TabsContent>
-
-              {hasGreenBox && (
-                <TabsContent value="advanced" className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-card p-6 rounded-xl border border-emerald-500/20 h-64 flex flex-col items-center justify-center text-center space-y-4">
-                      <Binary className="h-12 w-12 text-emerald-500" />
-                      <h3 className="text-xl font-black uppercase italic">Green Box Advanced Engine</h3>
-                      <p className="text-sm text-muted-foreground">High-precision 1ms spectral sampling active. No jitter detected.</p>
-                    </div>
-                    <div className="bg-card p-6 rounded-xl border border-emerald-500/20 h-64 flex flex-col items-center justify-center text-center space-y-4">
-                      <Zap className="h-12 w-12 text-emerald-500" />
-                      <h3 className="text-xl font-black uppercase italic">Structural Resonance Sync</h3>
-                      <p className="text-sm text-muted-foreground">Syncing with CNC frame harmonics. Accuracy: 99.9%.</p>
-                    </div>
-                  </div>
-                </TabsContent>
-              )}
-
+              <TabsContent value="alerts"><AlertList alerts={alerts} /></TabsContent>
+              <TabsContent value="insights"><MaintenanceInsights readings={allReadings} alerts={alerts} /></TabsContent>
+              <TabsContent value="certificate"><HealthCertificate healthScore={healthScore} machineId="VIN-DRAGON-001" language={language} /></TabsContent>
               <TabsContent value="reports" className="space-y-6">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  <ReportUploader language={language} />
-                  <div className="lg:col-span-2"><ReportList language={language} /></div>
+                  <ReportUploader />
+                  <div className="lg:col-span-2"><ReportList /></div>
                 </div>
               </TabsContent>
-
-              <TabsContent value="settings"><ThresholdSettings thresholds={thresholds} onUpdate={setThresholds} language={language} /></TabsContent>
+              <TabsContent value="settings"><ThresholdSettings thresholds={thresholds} onUpdate={setThresholds} /></TabsContent>
             </Tabs>
           </main>
         </SidebarInset>

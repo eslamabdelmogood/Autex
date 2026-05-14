@@ -1,25 +1,23 @@
 'use server';
 /**
- * @fileOverview A Genkit flow for detecting and classifying anomalies in industrial sensor data.
+ * @fileOverview A Genkit flow for detecting and classifying anomalies in automotive engine data.
  *
- * - detectAndClassifyAnomalies - A function that handles the anomaly detection and classification process.
- * - DetectAndClassifyAnomaliesInput - The input type for the detectAndClassifyAnomalies function.
- * - DetectAndClassifyAnomaliesOutput - The return type for the detectAndClassifyAnomalies function.
+ * - detectAndClassifyAnomalies - A function that handles the anomaly detection process.
  */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const DetectAndClassifyAnomaliesInputSchema = z.object({
-  sensorId: z.string().describe('The unique identifier for the sensor.'),
+  sensorId: z.string().describe('The unique identifier for the vehicle sensor.'),
   value: z.number().describe('The current reading from the sensor.'),
   timestamp: z.number().describe('The Unix timestamp of the sensor reading.'),
   machineId:
-    z.string().optional().describe('Optional: The identifier of the machine associated with the sensor.'),
+    z.string().optional().describe('Optional: The VIN or Vehicle ID.'),
   historicalContext:
     z.array(z.object({value: z.number(), timestamp: z.number()}))
       .optional()
-      .describe('Optional: Recent historical readings for context to detect trends or deviations.'),
+      .describe('Optional: Recent historical readings for context to detect trends.'),
   thresholds:
     z.object({
       min: z.number().optional().describe('Minimum acceptable value.'),
@@ -31,29 +29,29 @@ const DetectAndClassifyAnomaliesInputSchema = z.object({
 export type DetectAndClassifyAnomaliesInput = z.infer<typeof DetectAndClassifyAnomaliesInputSchema>;
 
 const DetectAndClassifyAnomaliesOutputSchema = z.object({
-  isAnomaly: z.boolean().describe('True if an anomaly is detected, false otherwise.'),
+  isAnomaly: z.boolean().describe('True if an anomaly is detected.'),
   anomalyType:
     z.string()
       .optional()
       .describe(
-        'The type of anomaly detected (e.g., "high vibration", "temperature spike", "pressure drop", "unusual pattern"). Only present if isAnomaly is true.'
+        'The type of anomaly (e.g., "misfire", "overheating", "fuel trim drift").'
       ),
   classification:
     z.string()
       .optional()
       .describe(
-        'A classification of the potential equipment malfunction (e.g., "bearing wear", "overheating", "seal leak", "normal operation"). Only present if isAnomaly is true.'
+        'A classification of the potential mechanical issue (e.g., "spark plug failure", "coolant leak").'
       ),
   severity:
     z.enum(['low', 'medium', 'high', 'critical', 'none'])
       .describe(
-        'The severity of the anomaly. "none" if no anomaly is detected.'
+        'The severity of the issue.'
       ),
   recommendation:
     z.string()
       .optional()
       .describe(
-        'A recommended action based on the anomaly (e.g., "inspect bearing", "check cooling system", "schedule maintenance within 24 hours"). Only present if isAnomaly is true.'
+        'A recommended action (e.g., "Stop vehicle immediately", "Service required soon").'
       ),
 });
 export type DetectAndClassifyAnomaliesOutput = z.infer<typeof DetectAndClassifyAnomaliesOutputSchema>;
@@ -68,7 +66,7 @@ const anomalyDetectionPrompt = ai.definePrompt({
   name: 'anomalyDetectionPrompt',
   input: {schema: DetectAndClassifyAnomaliesInputSchema},
   output: {schema: DetectAndClassifyAnomaliesOutputSchema},
-  prompt: `You are an expert industrial maintenance technician and an AI anomaly detection system. Your task is to analyze real-time sensor data from industrial machinery.\n\nCurrent Sensor Reading:\n- Sensor ID: {{{sensorId}}}\n- Value: {{{value}}}\n- Timestamp: {{{timestamp}}}\n\n{{#if machineId}}\nMachine ID: {{{machineId}}}\n{{/if}}\n\n{{#if thresholds.min}}\nMinimum acceptable value: {{{thresholds.min}}}\n{{/if}}\n{{#if thresholds.max}}\nMaximum acceptable value: {{{thresholds.max}}}\n{{/if}}\n\n{{#if historicalContext}}\nHistorical Context (last few readings):\n{{#each historicalContext}}\n- Value: {{{value}}}, Timestamp: {{{timestamp}}}\n{{/each}}\n{{/if}}\n\nAnalyze the current sensor reading in the context of any provided historical data and configured thresholds.\nDetermine if the current reading represents an anomaly or an unusual pattern that might indicate an emerging issue with the machinery.\nIf an anomaly is detected:\n1. Set 'isAnomaly' to true.\n2. Identify the 'anomalyType' (e.g., "high vibration", "temperature spike", "pressure drop", "unusual pattern").\n3. Provide a 'classification' of the potential equipment malfunction (e.g., "bearing wear", "overheating", "seal leak").\n4. Assign a 'severity' (low, medium, high, critical) based on the deviation and potential impact.\n5. Offer a concise 'recommendation' for corrective action.\n\nIf no anomaly is detected:\n1. Set 'isAnomaly' to false.\n2. Set 'severity' to "none".\n3. Do not provide 'anomalyType', 'classification', or 'recommendation'.\n\nRemember to be precise and concise. Do not include any conversational text outside of the JSON output.`,
+  prompt: `You are an expert automotive diagnostic technician AI. Your task is to analyze real-time engine sensor data.\n\nCurrent Sensor Reading:\n- Sensor: {{{sensorId}}}\n- Value: {{{value}}}\n- Timestamp: {{{timestamp}}}\n\n{{#if machineId}}\nVehicle VIN: {{{machineId}}}\n{{/if}}\n\nAnalyze if the reading represents a vehicle malfunction or an unusual pattern.\nIf an anomaly is detected:\n1. Set 'isAnomaly' to true.\n2. Identify 'anomalyType' (e.g., "Ignition Misfire", "Lean Fuel Mix", "Coolant Over-temp").\n3. Provide a 'classification' (e.g., "Worn Spark Plugs", "Oxygen Sensor Failure").\n4. Assign a 'severity' (low to critical).\n5. Offer a concise 'recommendation'.\n\nIf normal, set isAnomaly to false and severity to "none".`,
 });
 
 const detectAndClassifyAnomaliesFlow = ai.defineFlow(
