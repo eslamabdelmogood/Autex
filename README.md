@@ -42,13 +42,16 @@ The Black Dragon platform generates revenue through three primary channels:
 - **Styling**: Tailwind CSS & ShadCN UI
 - **Charts**: Recharts (Spectral Telemetry & Time Domain)
 
-## Getting Started
+## Getting Started & Mobile Use
 
+### Using on Laptop (Direct Connection)
 1. Set your `GOOGLE_GENAI_API_KEY` and `GEMINI_API_KEY` in the environment.
-2. **Connect Hardware**:
-   - Plug your OBD-II or Industrial Sensor cable into your laptop's USB port.
-   - Use Chrome or Edge browser.
-   - Click the **"Connect"** button in the dashboard header.
-   - Select the corresponding Serial Port in the browser popup.
-3. **Simulated Mode**: If no hardware is available, clicking "Connect" without selecting a port will start the AI simulation engine.
-4. **Test Anomaly**: Toggle "Test Anomaly" to simulate an industrial fault and trigger the AI agent escalation flow.
+2. Plug your OBD-II or Industrial Sensor cable into your laptop's USB port.
+3. Use Chrome or Edge browser.
+4. Click **"Connect"** and select the corresponding Serial Port.
+
+### Using on Smartphone (PWA)
+1. **Install**: Open the dashboard in Chrome (Android) or Safari (iOS) and select "Add to Home Screen".
+2. **Android Connection**: Use a USB-C OTG adapter to plug your cable directly into the phone. Chrome on Android supports Web Serial.
+3. **iOS Strategy**: Since Safari restricts USB serial, use your phone as a **Remote Viewer**. Log data using a laptop hub, and the **Black Box Ledger** will automatically sync the history to your phone for mobile review and certification generation.
+

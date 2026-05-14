@@ -1,11 +1,18 @@
-
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { WifiOff, Link as LinkIcon, Unlink, FlaskConical } from 'lucide-react';
+import { WifiOff, Link as LinkIcon, Unlink, FlaskConical, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface ConnectionStatusProps {
   isConnected: boolean;
@@ -26,7 +33,14 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
       standby: "STANDBY",
       test: "Test Anomaly",
       stop: "Stop",
-      connect: "Connect"
+      connect: "Connect",
+      mobile_tip: "Mobile Connection Guide",
+      mobile_desc: "To connect hardware to your smartphone:",
+      mobile_steps: [
+        "Android: Use an OTG adapter and Chrome browser.",
+        "iOS: Direct USB serial is restricted. Use 'Simulated Mode' to view synced 'Black Box' data from your laptop hub.",
+        "Ensure your cable is high-quality and set to 9600 baud."
+      ]
     },
     ar: {
       hardware: "الجهاز متصل",
@@ -34,7 +48,14 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
       standby: "وضع الاستعداد",
       test: "اختبار خلل",
       stop: "إيقاف",
-      connect: "اتصال"
+      connect: "اتصال",
+      mobile_tip: "دليل اتصال الهاتف",
+      mobile_desc: "لتوصيل الأجهزة بهاتفك الذكي:",
+      mobile_steps: [
+        "أندرويد: استخدم محول OTG ومتصفح كروم.",
+        "آيفون: اتصال USB المباشر مقيد. استخدم 'وضع المحاكاة' لعرض بيانات 'الصندوق الأسود' المتزامنة من الكمبيوتر المحمول.",
+        "تأكد من أن الكابل عالي الجودة ومعدل سرعة 9600."
+      ]
     }
   };
 
@@ -44,8 +65,8 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
     if (!('serial' in navigator)) {
       toast({
         variant: "destructive",
-        title: "Browser Unsupported",
-        description: "Your browser does not support the Web Serial API. Try Chrome or Edge on a laptop.",
+        title: "Serial Not Supported",
+        description: "Your device/browser doesn't support Web Serial. Click the info icon for mobile tips.",
       });
       return;
     }
@@ -59,11 +80,10 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
       
       toast({
         title: "Hardware Linked",
-        description: "Black Dragon is now receiving live telemetry from the serial port.",
+        description: "Black Dragon is now receiving live telemetry.",
       });
     } catch (err: any) {
       console.error("Connection failed:", err);
-      // Fallback to simulated if user cancels or it fails
       if (err.name !== 'NotFoundError') {
         onToggleConnection(true);
       }
@@ -84,9 +104,8 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
         if (done) break;
         if (value) {
           buffer += value;
-          // Split by lines as most OBD-II/Industrial sensors send \r\n
           const lines = buffer.split(/\r?\n/);
-          buffer = lines.pop() || ""; // Keep the last incomplete line in buffer
+          buffer = lines.pop() || "";
 
           for (const line of lines) {
             const numericValue = parseFloat(line.trim());
@@ -141,6 +160,35 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
 
   return (
     <div className="flex flex-wrap items-center gap-2 md:gap-3">
+      <Dialog>
+        <DialogTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground/50 hover:text-accent">
+            <Info className="h-4 w-4" />
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-md bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <LinkIcon className="h-5 w-5 text-accent" />
+              {t.mobile_tip}
+            </DialogTitle>
+            <DialogDescription className="pt-2 text-foreground/80">
+              {t.mobile_desc}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 pt-4">
+            {t.mobile_steps.map((step, i) => (
+              <div key={i} className="flex gap-3 text-sm">
+                <div className="h-5 w-5 rounded-full bg-accent/20 text-accent flex items-center justify-center shrink-0 font-bold text-[10px]">
+                  {i + 1}
+                </div>
+                <p>{step}</p>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <div className="flex items-center gap-2">
         {isConnected ? (
           <Badge variant="default" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 gap-1.5 py-1 px-3 text-[10px] md:text-xs">
