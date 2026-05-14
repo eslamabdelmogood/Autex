@@ -4,7 +4,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { WifiOff, Link as LinkIcon, Unlink, FlaskConical, Info, Cable } from 'lucide-react';
+import { WifiOff, Link as LinkIcon, Unlink, FlaskConical, Info, Cable, Smartphone, Laptop } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -36,12 +36,12 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
       stop: "Stop",
       connect: "Connect OBD-II",
       mobile_tip: "Mobile Connection Guide",
-      mobile_desc: "To connect hardware to your smartphone:",
-      mobile_steps: [
-        "Android: Use a USB-C OTG adapter and Chrome browser to access Serial.",
-        "iOS: Direct USB serial is restricted. Connect the cable to a laptop/tablet 'hub' and use your phone as a remote Command Center viewer.",
-        "Ensure your ELM327 cable is set to 9600 or 38400 baud depending on model."
-      ]
+      mobile_desc: "How to link your vehicle to your phone:",
+      android_title: "Android (Direct Link)",
+      android_steps: "Use a USB-C OTG adapter. Plug the OBD-II cable into your phone. Use Chrome browser to 'Connect'.",
+      ios_title: "iOS (Remote Viewer)",
+      ios_steps: "Direct USB is restricted by Apple. Connect the cable to a laptop to log data; this PWA will sync your dashboard in real-time.",
+      baud_tip: "Set ELM327 to 38400 or 9600 baud."
     },
     ar: {
       hardware: "الجهاز متصل",
@@ -51,12 +51,12 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
       stop: "إيقاف",
       connect: "اتصال OBD-II",
       mobile_tip: "دليل اتصال الهاتف",
-      mobile_desc: "لتوصيل الأجهزة بهاتفك الذكي:",
-      mobile_steps: [
-        "أندرويد: استخدم محول OTG ومتصفح كروم للوصول إلى المنفذ التسلسلي.",
-        "آيفون: اتصال USB المباشر مقيد. قم بتوصيل الكابل بجهاز كمبيوتر واستخدم هاتفك كشاشة عرض لمركز القيادة.",
-        "تأكد من ضبط كابل ELM327 على 9600 أو 38400 باود."
-      ]
+      mobile_desc: "كيفية ربط مركبتك بهاتفك:",
+      android_title: "أندرويد (اتصال مباشر)",
+      android_steps: "استخدم محول OTG. قم بتوصيل كابل OBD-II بهاتفك. استخدم متصفح كروم للاتصال.",
+      ios_title: "آيفون (عرض عن بعد)",
+      ios_steps: "اتصال USB المباشر مقيد. قم بتوصيل الكابل بجهاز كمبيوتر؛ وسيقوم هذا التطبيق بمزامنة بياناتك فوراً.",
+      baud_tip: "تأكد من ضبط ELM327 على 38400 أو 9600 باود."
     }
   };
 
@@ -74,20 +74,19 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
 
     try {
       const selectedPort = await (navigator as any).serial.requestPort();
-      // Try standard OBD-II baud rate, common for ELM327 clones
-      await selectedPort.open({ baudRate: 9600 });
+      // Most OBD-II adapters (ELM327) use 38400 or 9600
+      await selectedPort.open({ baudRate: 38400 });
       setPort(selectedPort);
       onToggleConnection(true);
       readFromPort(selectedPort);
       
       toast({
-        title: "OBD-II Linked",
-        description: "Black Dragon is now receiving live vehicle telemetry.",
+        title: "Vehicle Link Established",
+        description: "Black Dragon is now receiving live OBD-II telemetry.",
       });
     } catch (err: any) {
       console.error("Connection failed:", err);
       if (err.name !== 'NotFoundError') {
-        // Fallback for simulation if hardware fails but we want to stay "connected"
         onToggleConnection(true);
       }
     }
@@ -111,7 +110,7 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
           buffer = lines.pop() || "";
 
           for (const line of lines) {
-            // Attempt to parse numbers from lines like "RPM: 1200" or raw values
+            // Match typical OBD-II responses or raw sensor values
             const numericValue = parseFloat(line.replace(/[^0-9.]/g, '').trim());
             if (!isNaN(numericValue)) {
               onNewReading(numericValue);
@@ -166,8 +165,8 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
     <div className="flex flex-wrap items-center gap-2 md:gap-3">
       <Dialog>
         <DialogTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground/50 hover:text-accent">
-            <Info className="h-4 w-4" />
+          <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground/50 hover:text-accent">
+            <Smartphone className="h-5 w-5" />
           </Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-md bg-card border-border">
@@ -176,19 +175,26 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
               <Cable className="h-5 w-5 text-accent" />
               {t.mobile_tip}
             </DialogTitle>
-            <DialogDescription className="pt-2 text-foreground/80">
+            <DialogDescription className="pt-2">
               {t.mobile_desc}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 pt-4">
-            {t.mobile_steps.map((step, i) => (
-              <div key={i} className="flex gap-3 text-sm">
-                <div className="h-5 w-5 rounded-full bg-accent/20 text-accent flex items-center justify-center shrink-0 font-bold text-[10px]">
-                  {i + 1}
-                </div>
-                <p>{step}</p>
+          <div className="space-y-4 pt-4">
+            <div className="bg-muted/30 p-4 rounded-lg border border-border space-y-2">
+              <div className="flex items-center gap-2 font-bold text-accent text-xs">
+                <Smartphone className="h-4 w-4" />
+                {t.android_title}
               </div>
-            ))}
+              <p className="text-xs leading-relaxed text-muted-foreground">{t.android_steps}</p>
+            </div>
+            <div className="bg-muted/30 p-4 rounded-lg border border-border space-y-2">
+              <div className="flex items-center gap-2 font-bold text-muted-foreground text-xs">
+                <Laptop className="h-4 w-4" />
+                {t.ios_title}
+              </div>
+              <p className="text-xs leading-relaxed text-muted-foreground">{t.ios_steps}</p>
+            </div>
+            <p className="text-[10px] text-center italic text-muted-foreground/50">{t.baud_tip}</p>
           </div>
         </DialogContent>
       </Dialog>
