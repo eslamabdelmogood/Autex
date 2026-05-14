@@ -10,6 +10,7 @@ Black Dragon is a high-fidelity predictive maintenance platform built for indust
 - **HPI (Health Performance Index)**: An aggregate AI score tracking the real-time status of the machinery.
 - **Multilingual Command Center**: Fully localized in English and Arabic with automatic RTL (Right-to-Left) layout switching.
 - **Proof-of-Condition**: Digital certificate generation documenting health history to increase asset resale value.
+- **PWA Ready**: Installable on mobile devices with offline-first capabilities for "Edge Survival" in the field.
 
 ## AI Architecture
 
@@ -21,6 +22,15 @@ When the edge layer detects a fault, it escalates to a Genkit-based agent. This 
 - Analyzes the severity of the telemetry.
 - **Uses Tools** to query industrial databases for spare parts.
 - Formulates a technical recommendation based on the specific machine type and fault history.
+
+## Business & ROI Model (Monetization)
+
+The Black Dragon platform generates revenue through three primary channels:
+
+1.  **Hardware Sales**: The "Green Box" external precision unit for high-fidelity 1ms sampling.
+2.  **Maintenance-as-a-Service (SaaS)**: Tiered subscriptions for the Generative AI Reasoning layer and automated strategy generation.
+3.  **Certification Fees**: Fee-per-issue for immutable "Proof-of-Condition" certificates, used by asset owners to prove machine value during resale or insurance audits.
+4.  **Energy Optimization**: Gain-sharing model based on detected fuel/power efficiency improvements.
 
 ## Tech Stack
 
