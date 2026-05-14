@@ -24,13 +24,22 @@ When the edge layer detects a fault, it escalates to a Genkit-based agent. This 
 - **Uses Tools** to query industrial databases for spare parts.
 - Formulates a technical recommendation based on the specific machine type and fault history.
 
+## Market Strategy & Competitive Edge
+
+Black Dragon is positioned as a **Category Disruptor** in the Industrial IoT (IIoT) space:
+
+1. **Hybrid Intelligence Advantage**: Unlike competitors who rely solely on cloud connectivity, Black Dragon performs critical safety analysis at the edge. This eliminates latency and ensures "Edge Survival" in disconnected environments.
+2. **The "CARFAX" of Industry**: By issuing immutable "Proof-of-Condition" certificates, the platform transforms maintenance from a "cost center" into a "value protector," increasing the resale value of industrial assets.
+3. **Strategic Localization**: Full RTL Arabic support provides a unique entry point into the massive industrial projects in the Middle East (e.g., NEOM, Aramco), a region often underserved by Western-centric IIoT providers.
+4. **Frictionless Onboarding**: Using the Web Serial API and PWA technology, the system runs on standard consumer hardware (laptops/phones), removing the need for specialized, expensive proprietary equipment.
+
 ## Business & ROI Model (Monetization)
 
-The Black Dragon platform generates revenue through three primary channels:
+The Black Dragon platform generates revenue through four primary channels:
 
 1.  **Hardware Sales**: The "Green Box" external precision unit for high-fidelity 1ms sampling.
 2.  **Maintenance-as-a-Service (SaaS)**: Tiered subscriptions for the Generative AI Reasoning layer and automated strategy generation.
-3.  **Certification Fees**: Fee-per-issue for immutable "Proof-of-Condition" certificates, used by asset owners to prove machine value during resale or insurance audits.
+3.  **Certification Fees**: Fee-per-issue for immutable "Proof-of-Condition" certificates.
 4.  **Energy Optimization**: Gain-sharing model based on detected fuel/power efficiency improvements.
 
 ## Tech Stack
@@ -53,5 +62,4 @@ The Black Dragon platform generates revenue through three primary channels:
 ### Using on Smartphone (PWA)
 1. **Install**: Open the dashboard in Chrome (Android) or Safari (iOS) and select "Add to Home Screen".
 2. **Android Connection**: Use a USB-C OTG adapter to plug your cable directly into the phone. Chrome on Android supports Web Serial.
-3. **iOS Strategy**: Since Safari restricts USB serial, use your phone as a **Remote Viewer**. Log data using a laptop hub, and the **Black Box Ledger** will automatically sync the history to your phone for mobile review and certification generation.
-
+3. **iOS Strategy**: Use your phone as a **Remote Viewer**. Log data via a laptop hub; the **Black Box Ledger** will automatically sync history to your phone for mobile review and certification.
