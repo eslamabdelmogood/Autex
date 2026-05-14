@@ -13,6 +13,11 @@ Black Dragon is a high-fidelity predictive maintenance platform built for automo
 - **Proof-of-Condition**: Digital vehicle health certificates documenting performance history to increase asset resale value.
 - **PWA Ready**: Installable on mobile devices with offline-first capabilities for "Edge Survival" on the road.
 
+## Agentic Architecture
+Black Dragon operates as a two-tier agent:
+1. **The Sentinel (Local)**: A low-latency perception agent that watches for mechanical anomalies.
+2. **The Strategist (Cloud)**: A reasoning agent that uses tools to query inventory and formulate repair plans.
+
 ## Getting Started
 
 ### 1. Using on Laptop (Direct Connection)

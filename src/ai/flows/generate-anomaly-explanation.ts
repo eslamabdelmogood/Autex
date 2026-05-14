@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview This file implements a Genkit flow for generating automotive maintenance 
@@ -73,14 +74,17 @@ const anomalyAdvicePrompt = ai.definePrompt({
   tools: [getInventoryFromMongo],
   input: { schema: AnomalyExplanationInputSchema },
   output: { schema: AnomalyExplanationOutputSchema },
-  prompt: `You are a professional Master Automotive Mechanic AI.
+  prompt: `You are a professional Master Automotive Mechanic AI Agent.
+Your goal is to diagnose the vehicle and provide a complete repair strategy.
+
 Current Engine Reading: {{{vibrationValue}}}.
-Issue: {{{anomalyDetails}}}.
+Issue Detected: {{{anomalyDetails}}}.
 Vehicle Type: {{{machineType}}}.
 
+Instructions:
 1. Use the getInventoryFromMongo tool to find the specific auto part for this repair.
-2. Formulate a structured diagnostic response.
-3. Keep the recommendation technical and professional.
+2. Formulate a structured diagnostic response that reasons about the mechanical failure.
+3. Keep the recommendation technical, professional, and actionable.
 4. Set status to 'Critical' if vibration > 80 (engine instability), otherwise 'Warning'.`,
 });
 
