@@ -1,3 +1,4 @@
+
 # Black Dragon: Industrial AI Command Center & Maintenance Agent
 
 Black Dragon is a high-fidelity predictive maintenance platform built for industrial smart monitoring. It functions as a **Hybrid AI Agentic System**, combining local Edge AI for real-time perception with Cloud-based Generative AI for complex technical reasoning and maintenance strategy.
@@ -44,5 +45,10 @@ The Black Dragon platform generates revenue through three primary channels:
 ## Getting Started
 
 1. Set your `GOOGLE_GENAI_API_KEY` and `GEMINI_API_KEY` in the environment.
-2. Connect your hardware via the "Connect" button in the dashboard (Web Serial API supported).
-3. Toggle "Test Anomaly" to simulate an industrial fault and trigger the AI agent escalation flow.
+2. **Connect Hardware**:
+   - Plug your OBD-II or Industrial Sensor cable into your laptop's USB port.
+   - Use Chrome or Edge browser.
+   - Click the **"Connect"** button in the dashboard header.
+   - Select the corresponding Serial Port in the browser popup.
+3. **Simulated Mode**: If no hardware is available, clicking "Connect" without selecting a port will start the AI simulation engine.
+4. **Test Anomaly**: Toggle "Test Anomaly" to simulate an industrial fault and trigger the AI agent escalation flow.

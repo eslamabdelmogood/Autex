@@ -45,7 +45,7 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
       toast({
         variant: "destructive",
         title: "Browser Unsupported",
-        description: "Your browser does not support the Web Serial API. Try Chrome or Edge.",
+        description: "Your browser does not support the Web Serial API. Try Chrome or Edge on a laptop.",
       });
       return;
     }
@@ -56,8 +56,17 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
       setPort(selectedPort);
       onToggleConnection(true);
       readFromPort(selectedPort);
+      
+      toast({
+        title: "Hardware Linked",
+        description: "Black Dragon is now receiving live telemetry from the serial port.",
+      });
     } catch (err: any) {
-      onToggleConnection(true);
+      console.error("Connection failed:", err);
+      // Fallback to simulated if user cancels or it fails
+      if (err.name !== 'NotFoundError') {
+        onToggleConnection(true);
+      }
     }
   };
 
@@ -67,14 +76,23 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
     const reader = textDecoder.readable.getReader();
     readerRef.current = reader;
 
+    let buffer = "";
+
     try {
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
         if (value) {
-          const numericValue = parseFloat(value.trim());
-          if (!isNaN(numericValue)) {
-            onNewReading(numericValue);
+          buffer += value;
+          // Split by lines as most OBD-II/Industrial sensors send \r\n
+          const lines = buffer.split(/\r?\n/);
+          buffer = lines.pop() || ""; // Keep the last incomplete line in buffer
+
+          for (const line of lines) {
+            const numericValue = parseFloat(line.trim());
+            if (!isNaN(numericValue)) {
+              onNewReading(numericValue);
+            }
           }
         }
       }
@@ -86,10 +104,22 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
   };
 
   const disconnectSerial = async () => {
-    if (readerRef.current) await readerRef.current.cancel();
-    if (port) try { await port.close(); } catch (e) {}
+    if (readerRef.current) {
+      try {
+        await readerRef.current.cancel();
+      } catch (e) {}
+    }
+    if (port) {
+      try {
+        await port.close();
+      } catch (e) {}
+    }
     setPort(null);
     onToggleConnection(false);
+    toast({
+      title: "Hardware Disconnected",
+      description: "Returning to standby mode.",
+    });
   };
 
   const triggerAnomaly = () => {
