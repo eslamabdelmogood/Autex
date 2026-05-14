@@ -1,9 +1,10 @@
+
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { WifiOff, Link as LinkIcon, Unlink, FlaskConical, Info } from 'lucide-react';
+import { WifiOff, Link as LinkIcon, Unlink, FlaskConical, Info, Cable } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -33,13 +34,13 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
       standby: "STANDBY",
       test: "Test Anomaly",
       stop: "Stop",
-      connect: "Connect",
+      connect: "Connect OBD-II",
       mobile_tip: "Mobile Connection Guide",
       mobile_desc: "To connect hardware to your smartphone:",
       mobile_steps: [
-        "Android: Use an OTG adapter and Chrome browser.",
-        "iOS: Direct USB serial is restricted. Use 'Simulated Mode' to view synced 'Black Box' data from your laptop hub.",
-        "Ensure your cable is high-quality and set to 9600 baud."
+        "Android: Use a USB-C OTG adapter and Chrome browser to access Serial.",
+        "iOS: Direct USB serial is restricted. Connect the cable to a laptop/tablet 'hub' and use your phone as a remote Command Center viewer.",
+        "Ensure your ELM327 cable is set to 9600 or 38400 baud depending on model."
       ]
     },
     ar: {
@@ -48,13 +49,13 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
       standby: "وضع الاستعداد",
       test: "اختبار خلل",
       stop: "إيقاف",
-      connect: "اتصال",
+      connect: "اتصال OBD-II",
       mobile_tip: "دليل اتصال الهاتف",
       mobile_desc: "لتوصيل الأجهزة بهاتفك الذكي:",
       mobile_steps: [
-        "أندرويد: استخدم محول OTG ومتصفح كروم.",
-        "آيفون: اتصال USB المباشر مقيد. استخدم 'وضع المحاكاة' لعرض بيانات 'الصندوق الأسود' المتزامنة من الكمبيوتر المحمول.",
-        "تأكد من أن الكابل عالي الجودة ومعدل سرعة 9600."
+        "أندرويد: استخدم محول OTG ومتصفح كروم للوصول إلى المنفذ التسلسلي.",
+        "آيفون: اتصال USB المباشر مقيد. قم بتوصيل الكابل بجهاز كمبيوتر واستخدم هاتفك كشاشة عرض لمركز القيادة.",
+        "تأكد من ضبط كابل ELM327 على 9600 أو 38400 باود."
       ]
     }
   };
@@ -66,25 +67,27 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
       toast({
         variant: "destructive",
         title: "Serial Not Supported",
-        description: "Your device/browser doesn't support Web Serial. Click the info icon for mobile tips.",
+        description: "Your browser doesn't support Web Serial. Use Chrome on a laptop or OTG Android.",
       });
       return;
     }
 
     try {
       const selectedPort = await (navigator as any).serial.requestPort();
+      // Try standard OBD-II baud rate, common for ELM327 clones
       await selectedPort.open({ baudRate: 9600 });
       setPort(selectedPort);
       onToggleConnection(true);
       readFromPort(selectedPort);
       
       toast({
-        title: "Hardware Linked",
-        description: "Black Dragon is now receiving live telemetry.",
+        title: "OBD-II Linked",
+        description: "Black Dragon is now receiving live vehicle telemetry.",
       });
     } catch (err: any) {
       console.error("Connection failed:", err);
       if (err.name !== 'NotFoundError') {
+        // Fallback for simulation if hardware fails but we want to stay "connected"
         onToggleConnection(true);
       }
     }
@@ -108,7 +111,8 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
           buffer = lines.pop() || "";
 
           for (const line of lines) {
-            const numericValue = parseFloat(line.trim());
+            // Attempt to parse numbers from lines like "RPM: 1200" or raw values
+            const numericValue = parseFloat(line.replace(/[^0-9.]/g, '').trim());
             if (!isNaN(numericValue)) {
               onNewReading(numericValue);
             }
@@ -137,7 +141,7 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
     onToggleConnection(false);
     toast({
       title: "Hardware Disconnected",
-      description: "Returning to standby mode.",
+      description: "Returning to simulated standby mode.",
     });
   };
 
@@ -169,7 +173,7 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
         <DialogContent className="sm:max-w-md bg-card border-border">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <LinkIcon className="h-5 w-5 text-accent" />
+              <Cable className="h-5 w-5 text-accent" />
               {t.mobile_tip}
             </DialogTitle>
             <DialogDescription className="pt-2 text-foreground/80">

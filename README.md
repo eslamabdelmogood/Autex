@@ -1,3 +1,4 @@
+
 # Black Dragon: Automotive AI Command Center & Maintenance Agent
 
 Black Dragon is a high-fidelity predictive maintenance platform built for automotive smart monitoring. It functions as a **Hybrid AI Agentic System**, combining local Edge AI for real-time engine perception with Cloud-based Generative AI for technical reasoning and diagnostic strategy.
@@ -53,3 +54,8 @@ Black Dragon is a **Category Disruptor** in the Automotive Aftermarket:
 1. **Install**: Open the dashboard in Chrome (Android) or Safari (iOS) and select "Add to Home Screen".
 2. **Android**: Use a USB-C OTG adapter to plug your cable directly into the phone.
 3. **iOS Strategy**: Use your phone as a **Remote Viewer**. Log data via a laptop hub; the **Black Box Ledger** will automatically sync history to your phone.
+
+## Monetization Model
+- **Hardware Tier**: Sale of the high-precision "Green Box" OBD bridge.
+- **Agent SaaS**: Subscription-based access to the Cloud Reasoning engine.
+- **Certificate Fee**: Per-issue fee for the Digital Proof-of-Condition certificates.
