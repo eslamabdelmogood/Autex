@@ -34,7 +34,8 @@ import {
   Zap,
   Terminal,
   BrainCircuit,
-  Database
+  Database,
+  Loader2
 } from 'lucide-react';
 import { detectAndClassifyAnomalies, DetectAndClassifyAnomaliesOutput } from '@/ai/flows/detect-and-classify-anomalies';
 import { generateAnomalyExplanation, AnomalyExplanationOutput } from '@/ai/flows/generate-anomaly-explanation';
@@ -71,6 +72,45 @@ type AiLogEntry = {
   message: string;
   type: 'info' | 'brain' | 'hardware' | 'error';
 };
+
+function TypedLogEntry({ log }: { log: AiLogEntry }) {
+  const [displayedMessage, setDisplayedMessage] = useState('');
+  const [isTyping, setIsTyping] = useState(true);
+
+  useEffect(() => {
+    let index = 0;
+    const interval = setInterval(() => {
+      if (index < log.message.length) {
+        setDisplayedMessage((prev) => prev + log.message.charAt(index));
+        index++;
+      } else {
+        setIsTyping(false);
+        clearInterval(interval);
+      }
+    }, Math.floor(Math.random() * 30) + 10); // Random speed between 10-40ms
+
+    return () => clearInterval(interval);
+  }, [log.message]);
+
+  const colorClass = log.type === 'error' ? 'text-destructive' :
+                    log.type === 'brain' ? 'text-yellow-400' :
+                    log.type === 'hardware' ? 'text-emerald-500' :
+                    'text-muted-foreground';
+
+  return (
+    <div className="flex gap-2 leading-tight mb-1">
+      <span className="text-muted-foreground shrink-0 opacity-50">
+        [{new Date(log.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}]
+      </span>
+      <span className={`${colorClass} font-mono`}>
+        {log.type === 'brain' && <BrainCircuit className="inline h-2.5 w-2.5 mr-1" />}
+        {log.type === 'hardware' && <Zap className="inline h-2.5 w-2.5 mr-1" />}
+        {displayedMessage}
+        {isTyping && <span className="animate-pulse ml-0.5 border-l-2 border-current">&nbsp;</span>}
+      </span>
+    </div>
+  );
+}
 
 const EDGE_BUFFER_SIZE = 100;
 const MIN_AI_INTERVAL = 30000;
@@ -418,8 +458,8 @@ export function MonitoringDashboard() {
                         </div>
                         {isAnalyzing && (
                           <div className="flex items-center gap-2">
-                            <BrainCircuit className="h-3 w-3 text-accent animate-pulse" />
-                            <span className="text-[9px] text-accent animate-pulse">PROCESSING...</span>
+                            <BrainCircuit className="h-3 w-3 text-yellow-400 animate-pulse" />
+                            <span className="text-[9px] text-yellow-400 animate-pulse">REASONING...</span>
                           </div>
                         )}
                       </CardHeader>
@@ -428,19 +468,7 @@ export function MonitoringDashboard() {
                           <div className="space-y-1">
                             {aiLogs.length === 0 && <p className="text-muted-foreground/30 italic">No activity recorded yet...</p>}
                             {aiLogs.map(log => (
-                              <div key={log.id} className="flex gap-2 leading-tight">
-                                <span className="text-muted-foreground shrink-0">[{new Date(log.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}]</span>
-                                <span className={
-                                  log.type === 'error' ? 'text-destructive' :
-                                  log.type === 'brain' ? 'text-accent' :
-                                  log.type === 'hardware' ? 'text-emerald-500' :
-                                  'text-muted-foreground'
-                                }>
-                                  {log.type === 'brain' && <BrainCircuit className="inline h-2.5 w-2.5 mr-1" />}
-                                  {log.type === 'hardware' && <Zap className="inline h-2.5 w-2.5 mr-1" />}
-                                  {log.message}
-                                </span>
-                              </div>
+                              <TypedLogEntry key={log.id} log={log} />
                             ))}
                           </div>
                         </ScrollArea>
