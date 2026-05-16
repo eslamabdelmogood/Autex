@@ -29,7 +29,8 @@ import {
   Languages, 
   Cpu, 
   Binary,
-  Zap
+  Zap,
+  Volume2
 } from 'lucide-react';
 import { detectAndClassifyAnomalies, DetectAndClassifyAnomaliesOutput } from '@/ai/flows/detect-and-classify-anomalies';
 import { generateAnomalyExplanation, AnomalyExplanationOutput } from '@/ai/flows/generate-anomaly-explanation';
@@ -38,6 +39,7 @@ import { useFirestore, useUser } from '@/firebase';
 import { collection, addDoc, query, orderBy, limit, doc } from 'firebase/firestore';
 import { useCollection, useDoc } from '@/firebase';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { VoiceBriefingButton } from './voice-briefing-button';
 
 export type SensorReading = {
   timestamp: number;
@@ -247,7 +249,9 @@ export function MonitoringDashboard() {
       edgeActive: "Vehicle Edge AI Active",
       localSyncs: "Edge Inferences",
       fault: "Fault",
-      commandCenter: "Vehicle Command Center"
+      commandCenter: "Vehicle Command Center",
+      briefing: "Listen to Briefing",
+      briefing_text: `Vehicle Health Briefing. Your current health score is ${healthScore} percent. The engine is running at ${Math.round(rpm)} RPM with a temperature of ${Math.round(temp)} degrees Celsius. There are ${alerts.length} active alerts in the system.`
     },
     ar: {
       title: "أوتيكس للسيارات",
@@ -264,7 +268,9 @@ export function MonitoringDashboard() {
       edgeActive: "الذكاء الاصطناعي للمركبة نشط",
       localSyncs: "استدلالات الحافة",
       fault: "خلل",
-      commandCenter: "مركز قيادة المركبة"
+      commandCenter: "مركز قيادة المركبة",
+      briefing: "استمع للملخص",
+      briefing_text: `ملخص صحة المركبة. درجة الصحة الحالية هي ${healthScore} بالمائة. يعمل المحرك بسرعة ${Math.round(rpm)} دورة في الدقيقة مع درجة حرارة ${Math.round(temp)} درجة مئوية. يوجد ${alerts.length} تنبيهات نشطة في النظام.`
     }
   };
 
@@ -293,6 +299,15 @@ export function MonitoringDashboard() {
             </div>
             
             <div className="flex items-center gap-2 md:gap-4">
+              <VoiceBriefingButton 
+                text={t.briefing_text} 
+                language={language} 
+                variant="outline"
+                size="sm"
+                className="hidden md:flex gap-2 border-accent/20 hover:bg-accent/10 text-accent h-8"
+                showLabel
+              />
+
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -353,13 +368,13 @@ export function MonitoringDashboard() {
                     <LiveSensorChart readings={allReadings} thresholds={thresholds} inferenceCount={inferenceCount} lastFaultType={lastFaultType} language={language} />
                   </div>
                   <div className="lg:col-span-1">
-                    <AlertList alerts={alerts.slice(0, 5)} />
+                    <AlertList alerts={alerts.slice(0, 5)} language={language} />
                   </div>
                 </div>
               </TabsContent>
 
-              <TabsContent value="alerts"><AlertList alerts={alerts} /></TabsContent>
-              <TabsContent value="insights"><MaintenanceInsights readings={allReadings} alerts={alerts} /></TabsContent>
+              <TabsContent value="alerts"><AlertList alerts={alerts} language={language} /></TabsContent>
+              <TabsContent value="insights"><MaintenanceInsights readings={allReadings} alerts={alerts} language={language} /></TabsContent>
               <TabsContent value="certificate"><HealthCertificate healthScore={healthScore} machineId="VIN-AUTEX-001" language={language} /></TabsContent>
               <TabsContent value="reports" className="space-y-6">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

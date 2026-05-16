@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MessageSquare, Send, Bot, User, Loader2, Sparkles, Wrench, X } from 'lucide-react';
 import { diagnosticChat, DiagnosticChatOutput } from '@/ai/flows/diagnostic-chat-flow';
 import { Badge } from '@/components/ui/badge';
+import { VoiceBriefingButton } from './voice-briefing-button';
 
 interface Message {
   role: 'user' | 'model';
@@ -103,12 +104,19 @@ export function DiagnosticChat({ currentSensors, language = 'en' }: DiagnosticCh
                   </AvatarFallback>
                 </Avatar>
                 <div className={`flex flex-col gap-1 max-w-[80%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                  <div className={`p-3 rounded-2xl text-xs leading-relaxed ${
+                  <div className={`p-3 rounded-2xl text-xs leading-relaxed group relative ${
                     msg.role === 'user' 
                       ? 'bg-accent text-accent-foreground rounded-tr-none' 
                       : 'bg-muted text-foreground rounded-tl-none'
                   }`}>
                     {msg.content}
+                    {msg.role === 'model' && (
+                      <VoiceBriefingButton 
+                        text={msg.content} 
+                        language={language}
+                        className="absolute -right-10 top-0 h-8 w-8 text-accent opacity-0 group-hover:opacity-100 transition-opacity"
+                      />
+                    )}
                   </div>
                   {msg.isAction && (
                     <Badge variant="destructive" className="text-[9px] gap-1 px-1.5 py-0">

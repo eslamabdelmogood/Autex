@@ -1,15 +1,14 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AnomalyAlert } from './monitoring-dashboard';
-import { AlertTriangle, CheckCircle2, Clock, Wrench, Package, MapPin, Database, Volume2, Loader2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, Wrench, Package, MapPin, Database } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { generateVoiceBriefing } from '@/ai/flows/voice-briefing-flow';
-import { Button } from '@/components/ui/button';
+import { VoiceBriefingButton } from './voice-briefing-button';
 
 interface AlertListProps {
   alerts: AnomalyAlert[];
@@ -17,24 +16,6 @@ interface AlertListProps {
 }
 
 export function AlertList({ alerts, language = 'en' }: AlertListProps) {
-  const [playingId, setPlayingId] = useState<string | null>(null);
-
-  const handleVoiceBriefing = async (alert: AnomalyAlert) => {
-    if (playingId === alert.id) return;
-    
-    setPlayingId(alert.id);
-    try {
-      const text = `${alert.anomalyType}. ${alert.advice}`;
-      const response = await generateVoiceBriefing({ text, language });
-      const audio = new Audio(response.audioDataUri);
-      audio.onended = () => setPlayingId(null);
-      await audio.play();
-    } catch (error) {
-      console.error("Voice failed:", error);
-      setPlayingId(null);
-    }
-  };
-
   if (alerts.length === 0) {
     return (
       <Card className="flex flex-col items-center justify-center p-12 text-center border-dashed border-2 bg-transparent">
@@ -90,19 +71,11 @@ export function AlertList({ alerts, language = 'en' }: AlertListProps) {
                           <Wrench className="h-3 w-3 text-accent" />
                           <span className="text-xs font-bold text-accent uppercase">MAINTENANCE RECOMMENDATION</span>
                         </div>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
+                        <VoiceBriefingButton 
+                          text={`${alert.anomalyType}. ${alert.advice}`} 
+                          language={language}
                           className="h-6 w-6 text-accent hover:bg-accent/20"
-                          onClick={() => handleVoiceBriefing(alert)}
-                          disabled={playingId === alert.id}
-                        >
-                          {playingId === alert.id ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <Volume2 className="h-3 w-3" />
-                          )}
-                        </Button>
+                        />
                       </div>
                       <p className="text-sm leading-relaxed text-foreground/90 font-medium">
                         {alert.advice}
