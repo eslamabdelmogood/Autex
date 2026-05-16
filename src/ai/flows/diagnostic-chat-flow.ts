@@ -43,6 +43,8 @@ const DiagnosticChatInputSchema = z.object({
   }).optional().describe('Live sensor data for context.'),
 });
 
+export type DiagnosticChatInput = z.infer<typeof DiagnosticChatInputSchema>;
+
 const DiagnosticChatOutputSchema = z.object({
   text: z.string().describe('The AI response message.'),
   actionRequired: z.boolean().describe('Whether a physical repair is suggested.'),
@@ -51,10 +53,12 @@ const DiagnosticChatOutputSchema = z.object({
 
 export type DiagnosticChatOutput = z.infer<typeof DiagnosticChatOutputSchema>;
 
-export async function diagnosticChat(input: z.infer<typeof DiagnosticChatInputSchema>): Promise<DiagnosticChatOutput> {
-  const { output } = await ai.generate({
-    model: 'googleai/gemini-2.5-flash',
-    system: `You are the "Autex" Master AI Mechanic. You are a professional, technical, and helpful automotive expert.
+const chatPrompt = ai.definePrompt({
+  name: 'chatPrompt',
+  input: { schema: DiagnosticChatInputSchema },
+  output: { schema: DiagnosticChatOutputSchema },
+  tools: [getInventory],
+  system: `You are the "Autex" Master AI Mechanic. You are a professional, technical, and helpful automotive expert.
     
     You have access to the vehicle's LIVE SENSOR DATA:
     - RPM: {{{currentSensors.rpm}}}
@@ -68,11 +72,17 @@ export async function diagnosticChat(input: z.infer<typeof DiagnosticChatInputSc
     3. Use the getInventory tool if the user asks about parts or if a repair is needed.
     4. Keep the tone authoritative but conversational.
     5. Support both English and Arabic.`,
-    prompt: input.message,
-    tools: [getInventory],
-    output: { schema: DiagnosticChatOutputSchema }
-  });
+  prompt: `{{#if history}}
+History:
+{{#each history}}
+{{role}}: {{{content}}}
+{{/each}}
+{{/if}}
+User: {{{message}}}`,
+});
 
+export async function diagnosticChat(input: DiagnosticChatInput): Promise<DiagnosticChatOutput> {
+  const { output } = await chatPrompt(input);
   if (!output) throw new Error('Failed to generate diagnostic response');
   return output;
 }
