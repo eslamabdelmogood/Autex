@@ -13,6 +13,7 @@ import { ReportUploader } from './report-uploader';
 import { ReportList } from './report-list';
 import { MaintenanceInsights } from './maintenance-insights';
 import { HealthCertificate } from './health-certificate';
+import { DiagnosticChat } from './diagnostic-chat';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -368,6 +369,17 @@ export function MonitoringDashboard() {
               <TabsContent value="settings"><ThresholdSettings thresholds={thresholds} onUpdate={setThresholds} /></TabsContent>
             </Tabs>
           </main>
+          
+          {/* Floating Chat Agent */}
+          <DiagnosticChat 
+            currentSensors={{
+              rpm,
+              vibration: currentVibration || 0,
+              temp,
+              healthScore
+            }} 
+            language={language}
+          />
         </SidebarInset>
       </div>
     </SidebarProvider>
