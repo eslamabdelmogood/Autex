@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -11,21 +12,63 @@ import {
   AlertCircle, 
   BarChart3, 
   ArrowUpRight,
-  ZapOff
+  ZapOff,
+  Activity,
+  History
 } from 'lucide-react';
 import { SensorReading, AnomalyAlert } from './monitoring-dashboard';
 
 interface MaintenanceInsightsProps {
   readings: SensorReading[];
   alerts: AnomalyAlert[];
+  language?: 'en' | 'ar';
 }
 
-export function MaintenanceInsights({ readings, alerts }: MaintenanceInsightsProps) {
+export function MaintenanceInsights({ readings, alerts, language = 'en' }: MaintenanceInsightsProps) {
   // Simulate ROI and efficiency metrics
-  const avgVibration = readings.reduce((acc, r) => acc + r.value, 0) / (readings.length || 1);
+  const avgVibration = readings.length > 0 ? readings.reduce((acc, r) => acc + r.value, 0) / readings.length : 40;
   const efficiencyLoss = Math.min(15, Math.max(0, (avgVibration - 30) * 0.2));
   const potentialSavings = alerts.length * 1250; // Average cost avoided per early detection
   
+  const translations = {
+    en: {
+      roi: "Maintenance ROI",
+      roi_desc: "Estimated cost avoided via early detection",
+      improvement: "24% Improvement",
+      efficiency: "Predictive Energy Efficiency",
+      efficiency_desc: "Detection of power drift due to mechanical friction",
+      drift: "Excess Consumption Drift",
+      impact: "Impact Analysis",
+      heat: "Heat Dissipation Leak",
+      suggestion: "AI Suggestion",
+      bearings: "Re-calibrate Bearings",
+      cost_benefit: "Maintenance Cost-Benefit Breakdown",
+      downtime: "Unscheduled Downtime Prevention",
+      lifecycle: "Component Lifecycle Extension",
+      accuracy: "Operational Accuracy Drift",
+      footprint: "Energy Footprint Reduction"
+    },
+    ar: {
+      roi: "عائد الاستثمار في الصيانة",
+      roi_desc: "التكلفة التقديرية التي تم تجنبها عبر الاكتشاف المبكر",
+      improvement: "24% تحسن",
+      efficiency: "كفاءة الطاقة التنبؤية",
+      efficiency_desc: "اكتشاف انحراف الطاقة بسبب الاحتكاك الميكانيكي",
+      drift: "انحراف الاستهلاك الزائد",
+      impact: "تحليل التأثير",
+      heat: "تسرب تبديد الحرارة",
+      suggestion: "اقتراح الذكاء الاصطناعي",
+      bearings: "إعادة معايرة المحامل",
+      cost_benefit: "تفصيل التكلفة مقابل الفائدة",
+      downtime: "منع التوقف غير المجدول",
+      lifecycle: "إطالة عمر المكونات",
+      accuracy: "انحراف الدقة التشغيلية",
+      footprint: "تقليل بصمة الطاقة"
+    }
+  };
+
+  const t = translations[language];
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -34,15 +77,15 @@ export function MaintenanceInsights({ readings, alerts }: MaintenanceInsightsPro
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2 text-emerald-500">
               <DollarSign className="h-5 w-5" />
-              Maintenance ROI
+              {t.roi}
             </CardTitle>
-            <CardDescription>Estimated cost avoided via early detection</CardDescription>
+            <CardDescription>{t.roi_desc}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-baseline gap-2">
               <span className="text-4xl font-black text-emerald-500">${potentialSavings.toLocaleString()}</span>
               <Badge variant="outline" className="text-emerald-500 border-emerald-500/30 gap-1">
-                <ArrowUpRight className="h-3 w-3" /> 24% Improvement
+                <ArrowUpRight className="h-3 w-3" /> {t.improvement}
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground">
@@ -56,13 +99,13 @@ export function MaintenanceInsights({ readings, alerts }: MaintenanceInsightsPro
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Leaf className="h-5 w-5 text-accent" />
-              Predictive Energy Efficiency
+              {t.efficiency}
             </CardTitle>
-            <CardDescription>Detection of power drift due to mechanical friction</CardDescription>
+            <CardDescription>{t.efficiency_desc}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="flex justify-between items-center mb-1">
-              <span className="text-sm font-medium">Excess Consumption Drift</span>
+              <span className="text-sm font-medium">{t.drift}</span>
               <span className={`text-sm font-bold ${efficiencyLoss > 5 ? 'text-destructive' : 'text-accent'}`}>
                 +{efficiencyLoss.toFixed(1)}% KWh
               </span>
@@ -71,17 +114,17 @@ export function MaintenanceInsights({ readings, alerts }: MaintenanceInsightsPro
             
             <div className="grid grid-cols-2 gap-4 pt-2">
               <div className="bg-background/50 p-3 rounded-lg border border-border">
-                <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1">Impact Analysis</p>
+                <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1">{t.impact}</p>
                 <div className="flex items-center gap-2">
                   <ZapOff className="h-4 w-4 text-orange-500" />
-                  <span className="text-xs font-medium">Heat Dissipation Leak</span>
+                  <span className="text-xs font-medium">{t.heat}</span>
                 </div>
               </div>
               <div className="bg-background/50 p-3 rounded-lg border border-border">
-                <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1">AI Suggestion</p>
+                <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1">{t.suggestion}</p>
                 <div className="flex items-center gap-2">
                   <TrendingDown className="h-4 w-4 text-emerald-500" />
-                  <span className="text-xs font-medium">Re-calibrate Bearings</span>
+                  <span className="text-xs font-medium">{t.bearings}</span>
                 </div>
               </div>
             </div>
@@ -93,16 +136,16 @@ export function MaintenanceInsights({ readings, alerts }: MaintenanceInsightsPro
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <BarChart3 className="h-5 w-5 text-accent" />
-            Maintenance Cost-Benefit Breakdown
+            {t.cost_benefit}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             {[
-              { label: 'Unscheduled Downtime Prevention', score: 88, color: 'bg-emerald-500' },
-              { label: 'Component Lifecycle Extension', score: 72, color: 'bg-accent' },
-              { label: 'Operational Accuracy Drift', score: 94, color: 'bg-emerald-500' },
-              { label: 'Energy Footprint Reduction', score: 65, color: 'bg-orange-500' },
+              { label: t.downtime, score: 88, color: 'bg-emerald-500' },
+              { label: t.lifecycle, score: 72, color: 'bg-accent' },
+              { label: t.accuracy, score: 94, color: 'bg-emerald-500' },
+              { label: t.footprint, score: 65, color: 'bg-orange-500' },
             ].map((item) => (
               <div key={item.label} className="space-y-1.5">
                 <div className="flex justify-between text-xs">
