@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -28,7 +29,7 @@ interface DiagnosticChatProps {
 
 export function DiagnosticChat({ currentSensors, language = 'en' }: DiagnosticChatProps) {
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'model', content: language === 'en' ? "I am the Black Dragon AI Mechanic. How can I assist with your vehicle today?" : "أنا ميكانيكي الذكاء الاصطناعي التنين الأسود. كيف يمكنني مساعدتك في مركبتك اليوم؟" }
+    { role: 'model', content: language === 'en' ? "I am the Autex AI Mechanic. How can I assist with your vehicle today?" : "أنا ميكانيكي الذكاء الاصطناعي أوتيكس. كيف يمكنني مساعدتك في مركبتك اليوم؟" }
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -84,7 +85,7 @@ export function DiagnosticChat({ currentSensors, language = 'en' }: DiagnosticCh
       <CardHeader className="bg-accent text-accent-foreground py-3 flex flex-row items-center justify-between">
         <div className="flex items-center gap-2">
           <Bot className="h-5 w-5" />
-          <CardTitle className="text-sm font-black uppercase">Dragon Mechanic AI</CardTitle>
+          <CardTitle className="text-sm font-black uppercase">Autex Mechanic AI</CardTitle>
         </div>
         <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-white/20" onClick={() => setIsOpen(false)}>
           <X className="h-4 w-4" />

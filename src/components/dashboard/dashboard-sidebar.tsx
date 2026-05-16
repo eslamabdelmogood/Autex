@@ -1,3 +1,4 @@
+
 "use client";
 
 import Image from "next/image";
@@ -32,11 +33,11 @@ interface DashboardSidebarProps {
 }
 
 export function DashboardSidebar({ language = 'en', hasGreenBox = false }: DashboardSidebarProps) {
-  const logo = PlaceHolderImages.find(img => img.id === 'black-dragon-logo');
+  const logo = PlaceHolderImages.find(img => img.id === 'autex-logo');
 
   const translations = {
     en: {
-      brand: "BLACK DRAGON",
+      brand: "AUTEX",
       core: "Vehicle Operations",
       command: "Command Center",
       incident: "Diagnostic Log",
@@ -52,7 +53,7 @@ export function DashboardSidebar({ language = 'en', hasGreenBox = false }: Dashb
       greenBoxActive: "Green Box: Active"
     },
     ar: {
-      brand: "التنين الأسود",
+      brand: "أوتيكس",
       core: "عمليات المركبة",
       command: "مركز القيادة",
       incident: "سجل التشخيص",
@@ -79,11 +80,11 @@ export function DashboardSidebar({ language = 'en', hasGreenBox = false }: Dashb
             <div className="relative h-8 w-8 min-w-[32px] overflow-hidden rounded-md bg-black">
               <Image 
                 src={logo.imageUrl} 
-                alt="Black Dragon Logo" 
+                alt="Autex Logo" 
                 fill 
                 sizes="(max-width: 768px) 100vw, 50vw"
                 className="object-cover invert opacity-80"
-                data-ai-hint="black dragon"
+                data-ai-hint="automotive logo"
               />
             </div>
           )}

@@ -1,16 +1,17 @@
+
 import type {Metadata, Viewport} from 'next';
 import './globals.css';
 import {Toaster} from '@/components/ui/toaster';
 import {FirebaseClientProvider} from '@/firebase';
 
 export const metadata: Metadata = {
-  title: 'Black Dragon',
-  description: 'AI-Powered Smart Monitoring Platform',
+  title: 'Autex',
+  description: 'AI-Powered Automotive Smart Monitoring Platform',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Black Dragon',
+    title: 'Autex',
   },
   formatDetection: {
     telephone: false,

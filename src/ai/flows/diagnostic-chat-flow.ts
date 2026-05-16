@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A conversational AI agent for real-time automotive diagnostics.
@@ -53,7 +54,7 @@ export type DiagnosticChatOutput = z.infer<typeof DiagnosticChatOutputSchema>;
 export async function diagnosticChat(input: z.infer<typeof DiagnosticChatInputSchema>): Promise<DiagnosticChatOutput> {
   const { output } = await ai.generate({
     model: 'googleai/gemini-2.5-flash',
-    system: `You are the "Black Dragon" Master AI Mechanic. You are a professional, technical, and helpful automotive expert.
+    system: `You are the "Autex" Master AI Mechanic. You are a professional, technical, and helpful automotive expert.
     
     You have access to the vehicle's LIVE SENSOR DATA:
     - RPM: {{{currentSensors.rpm}}}

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -34,7 +35,7 @@ export function HealthCertificate({ healthScore, machineId, language = 'en' }: H
       download: "Export PDF",
       sign: "Sign Digital Report",
       certified_label: "Certified Health",
-      compliance_text: "This certificate is generated using immutable Black Box hashing. It provides verified proof of consistent engine performance, increasing resale value and ensuring regulatory compliance for high-value assets."
+      compliance_text: "This certificate is generated using immutable Autex Black Box hashing. It provides verified proof of consistent engine performance, increasing resale value and ensuring regulatory compliance for high-value assets."
     },
     ar: {
       proof: "إثبات حالة المركبة",
@@ -47,7 +48,7 @@ export function HealthCertificate({ healthScore, machineId, language = 'en' }: H
       download: "تصدير PDF",
       sign: "توقيع التقرير",
       certified_label: "صحة معتمدة",
-      compliance_text: "يتم إنشاء هذه الشهادة باستخدام تشفير الصندوق الأسود الثابت. وهي توفر إثباتًا موثقًا لأداء المحرك، مما يزيد من قيمة إعادة البيع ويضمن الامتثال التنظيمي."
+      compliance_text: "يتم إنشاء هذه الشهادة باستخدام تشفير أوتيكس الثابت. وهي توفر إثباتًا موثقًا لأداء المحرك، مما يزيد من قيمة إعادة البيع ويضمن الامتثال التنظيمي."
     }
   };
 
@@ -102,7 +103,7 @@ export function HealthCertificate({ healthScore, machineId, language = 'en' }: H
                 <Activity className="h-4 w-4 text-muted-foreground" />
                 <div className="text-left rtl:text-right">
                   <p className="text-[9px] md:text-[10px] text-muted-foreground uppercase font-bold">{t.validator}</p>
-                  <p className="text-[10px] md:text-xs font-medium italic">Dragon Edge Automotive v4.2</p>
+                  <p className="text-[10px] md:text-xs font-medium italic">Autex Edge Automotive v4.2</p>
                 </div>
               </div>
             </div>

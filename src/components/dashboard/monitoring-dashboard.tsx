@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
@@ -81,7 +82,7 @@ export function MonitoringDashboard() {
   const db = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
-  const logo = PlaceHolderImages.find(img => img.id === 'black-dragon-logo');
+  const logo = PlaceHolderImages.find(img => img.id === 'autex-logo');
 
   const userProfileRef = useMemo(() => {
     if (!db || !user) return null;
@@ -153,7 +154,7 @@ export function MonitoringDashboard() {
         rpm: newRpm,
         temp: newTemp,
         timestamp,
-        machineId: 'VIN-DRAGON-001'
+        machineId: 'VIN-AUTEX-001'
       });
     }
 
@@ -232,7 +233,7 @@ export function MonitoringDashboard() {
 
   const translations = {
     en: {
-      title: "Black Dragon Automotive",
+      title: "Autex Automotive",
       monitor: "Engine Monitor",
       alerts: "Diagnostic Alerts",
       insights: "Vehicle Insights",
@@ -249,7 +250,7 @@ export function MonitoringDashboard() {
       commandCenter: "Vehicle Command Center"
     },
     ar: {
-      title: "التنين الأسود للسيارات",
+      title: "أوتيكس للسيارات",
       monitor: "مراقب المحرك",
       alerts: "تنبيهات التشخيص",
       insights: "بصيرة المركبة",
@@ -280,11 +281,11 @@ export function MonitoringDashboard() {
                 <div className="relative h-7 w-7 overflow-hidden rounded-md bg-black hidden sm:block">
                   <Image 
                     src={logo.imageUrl} 
-                    alt="Black Dragon Logo" 
+                    alt="Autex Logo" 
                     fill 
                     sizes="(max-width: 768px) 100vw, 50vw"
                     className="object-cover invert opacity-80"
-                    data-ai-hint="black dragon"
+                    data-ai-hint="automotive logo"
                   />
                 </div>
               )}
@@ -359,7 +360,7 @@ export function MonitoringDashboard() {
 
               <TabsContent value="alerts"><AlertList alerts={alerts} /></TabsContent>
               <TabsContent value="insights"><MaintenanceInsights readings={allReadings} alerts={alerts} /></TabsContent>
-              <TabsContent value="certificate"><HealthCertificate healthScore={healthScore} machineId="VIN-DRAGON-001" language={language} /></TabsContent>
+              <TabsContent value="certificate"><HealthCertificate healthScore={healthScore} machineId="VIN-AUTEX-001" language={language} /></TabsContent>
               <TabsContent value="reports" className="space-y-6">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <ReportUploader />
