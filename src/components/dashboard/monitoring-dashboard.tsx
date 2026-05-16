@@ -18,6 +18,8 @@ import { DiagnosticChat } from './diagnostic-chat';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { 
   Activity, 
   Bell, 
@@ -30,7 +32,9 @@ import {
   Cpu, 
   Binary,
   Zap,
-  Volume2
+  Terminal,
+  BrainCircuit,
+  Database
 } from 'lucide-react';
 import { detectAndClassifyAnomalies, DetectAndClassifyAnomaliesOutput } from '@/ai/flows/detect-and-classify-anomalies';
 import { generateAnomalyExplanation, AnomalyExplanationOutput } from '@/ai/flows/generate-anomaly-explanation';
@@ -53,6 +57,7 @@ export type AnomalyAlert = DetectAndClassifyAnomaliesOutput & {
   id: string;
   timestamp: number;
   advice?: string;
+  trace?: any;
   part_details?: {
     id: string;
     location: string;
@@ -60,11 +65,19 @@ export type AnomalyAlert = DetectAndClassifyAnomaliesOutput & {
   };
 };
 
+type AiLogEntry = {
+  id: string;
+  timestamp: number;
+  message: string;
+  type: 'info' | 'brain' | 'hardware' | 'error';
+};
+
 const EDGE_BUFFER_SIZE = 100;
-const MIN_AI_INTERVAL = 60000;
+const MIN_AI_INTERVAL = 30000;
 
 export function MonitoringDashboard() {
   const [alerts, setAlerts] = useState<AnomalyAlert[]>([]);
+  const [aiLogs, setAiLogs] = useState<AiLogEntry[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [thresholds, setThresholds] = useState({ min: 20, max: 80 });
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -80,11 +93,21 @@ export function MonitoringDashboard() {
   const classifierRef = useRef<any>(null);
   const vibrationBuffer = useRef<number[]>([]);
   const lastAiCallTimestamp = useRef(0);
+  const logScrollRef = useRef<HTMLDivElement>(null);
   
   const db = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
   const logo = PlaceHolderImages.find(img => img.id === 'autex-logo');
+
+  const addAiLog = useCallback((message: string, type: AiLogEntry['type'] = 'info') => {
+    setAiLogs(prev => [{
+      id: crypto.randomUUID(),
+      timestamp: Date.now(),
+      message,
+      type
+    }, ...prev].slice(0, 50));
+  }, []);
 
   const userProfileRef = useMemo(() => {
     if (!db || !user) return null;
@@ -104,6 +127,7 @@ export function MonitoringDashboard() {
           const classifier = new (window as any).EdgeImpulseClassifier();
           await classifier.init();
           classifierRef.current = classifier;
+          addAiLog("Edge AI Engine (Local) initialized and standing by.", 'hardware');
         }
       } catch (err) {
         console.error("Failed to load edge model:", err);
@@ -111,7 +135,7 @@ export function MonitoringDashboard() {
     };
     document.body.appendChild(script);
     return () => { if (document.body.contains(script)) document.body.removeChild(script); };
-  }, []);
+  }, [addAiLog]);
 
   const readingsQuery = useMemo(() => {
     if (!db) return null;
@@ -164,19 +188,24 @@ export function MonitoringDashboard() {
     if (vibrationBuffer.current.length >= EDGE_BUFFER_SIZE) {
       if (classifierRef.current) {
         try {
+          addAiLog("Running Edge AI classification on sensor buffer...", 'hardware');
           const results = classifierRef.current.classify(vibrationBuffer.current);
           setInferenceCount(prev => prev + 1);
+          
           if (results.classification && results.classification.misfire > 0.8) {
+            addAiLog("Edge AI DETECTED: Engine Misfire (High Confidence)", 'error');
             setLastFaultType("Engine Misfire");
             const now = Date.now();
             if (now - lastAiCallTimestamp.current > MIN_AI_INTERVAL) {
               setIsAnalyzing(true);
               lastAiCallTimestamp.current = now;
+              addAiLog("Cloud AI Strategist: Reasoning through misfire event...", 'brain');
               const explanationResult = await generateAnomalyExplanation({
                 vibrationValue: value,
                 anomalyDetails: "Engine Misfire detected by Edge Engine",
                 machineType: 'V8 Performance Engine'
               });
+              addAiLog(`AI Recommendation: ${explanationResult.recommendation.substring(0, 40)}...`, 'brain');
               setAlerts(prev => [{
                 isAnomaly: true,
                 anomalyType: "Misfire (Edge AI)",
@@ -186,12 +215,17 @@ export function MonitoringDashboard() {
                 id: crypto.randomUUID(),
                 timestamp,
                 advice: explanationResult.recommendation,
-                part_details: explanationResult.part_details
+                part_details: explanationResult.part_details,
+                trace: { results, explanationResult }
               }, ...prev]);
               setIsAnalyzing(false);
             }
+          } else {
+            addAiLog("Edge AI Result: Pattern Nominal.", 'hardware');
           }
-        } catch (err) {}
+        } catch (err) {
+          addAiLog("Edge AI Error: Classification failed.", 'error');
+        }
       }
       vibrationBuffer.current = [];
     }
@@ -201,6 +235,7 @@ export function MonitoringDashboard() {
       if (now - lastAiCallTimestamp.current > MIN_AI_INTERVAL) {
         setIsAnalyzing(true);
         lastAiCallTimestamp.current = now;
+        addAiLog(`Sensor Alert: Value ${value.toFixed(1)} outside thresholds. Invoking Reasoning Agent...`, 'brain');
         try {
           const detectionResult = await detectAndClassifyAnomalies({
             sensorId: 'OBD-RPM-01',
@@ -210,24 +245,29 @@ export function MonitoringDashboard() {
             historicalContext: allReadings.slice(-5)
           });
           if (detectionResult.isAnomaly) {
+            addAiLog(`Anomaly Classified: ${detectionResult.anomalyType}. Severity: ${detectionResult.severity}`, 'brain');
             const explanationResult = await generateAnomalyExplanation({
               vibrationValue: value,
               anomalyDetails: detectionResult.anomalyType || 'Engine Instability',
               machineType: 'Vehicle Engine'
             });
+            addAiLog("Consulting Inventory Tool for corrective parts...", 'brain');
             setAlerts(prev => [{
               ...detectionResult,
               id: crypto.randomUUID(),
               timestamp,
               advice: explanationResult.recommendation,
-              part_details: explanationResult.part_details
+              part_details: explanationResult.part_details,
+              trace: { detectionResult, explanationResult }
             }, ...prev]);
           }
-        } catch (error) {}
+        } catch (error) {
+          addAiLog("Cloud AI Error: Reasoning flow failed.", 'error');
+        }
         finally { setIsAnalyzing(false); }
       }
     }
-  }, [allReadings, thresholds, db]);
+  }, [allReadings, thresholds, db, addAiLog]);
 
   const toggleLanguage = () => {
     setLanguage(prev => prev === 'en' ? 'ar' : 'en');
@@ -251,7 +291,8 @@ export function MonitoringDashboard() {
       fault: "Fault",
       commandCenter: "Vehicle Command Center",
       briefing: "Listen to Briefing",
-      briefing_text: `Vehicle Health Briefing. Your current health score is ${healthScore} percent. The engine is running at ${Math.round(rpm)} RPM with a temperature of ${Math.round(temp)} degrees Celsius. There are ${alerts.length} active alerts in the system.`
+      briefing_text: `Vehicle Health Briefing. Your current health score is ${healthScore} percent. The engine is running at ${Math.round(rpm)} RPM with a temperature of ${Math.round(temp)} degrees Celsius. There are ${alerts.length} active alerts in the system.`,
+      ai_log: "AI Agent Activity Log"
     },
     ar: {
       title: "أوتيكس للسيارات",
@@ -270,7 +311,8 @@ export function MonitoringDashboard() {
       fault: "خلل",
       commandCenter: "مركز قيادة المركبة",
       briefing: "استمع للملخص",
-      briefing_text: `ملخص صحة المركبة. درجة الصحة الحالية هي ${healthScore} بالمائة. يعمل المحرك بسرعة ${Math.round(rpm)} دورة في الدقيقة مع درجة حرارة ${Math.round(temp)} درجة مئوية. يوجد ${alerts.length} تنبيهات نشطة في النظام.`
+      briefing_text: `ملخص صحة المركبة. درجة الصحة الحالية هي ${healthScore} بالمائة. يعمل المحرك بسرعة ${Math.round(rpm)} دورة في الدقيقة مع درجة حرارة ${Math.round(temp)} درجة مئوية. يوجد ${alerts.length} تنبيهات نشطة في النظام.`,
+      ai_log: "سجل نشاط وكيل الذكاء الاصطناعي"
     }
   };
 
@@ -364,8 +406,46 @@ export function MonitoringDashboard() {
 
               <TabsContent value="monitor" className="space-y-6">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  <div className="lg:col-span-2">
+                  <div className="lg:col-span-2 space-y-6">
                     <LiveSensorChart readings={allReadings} thresholds={thresholds} inferenceCount={inferenceCount} lastFaultType={lastFaultType} language={language} />
+                    
+                    {/* AI Activity Log Panel */}
+                    <Card className="border-border bg-black/40 font-mono text-[10px] md:text-xs">
+                      <CardHeader className="py-2 px-4 border-b flex flex-row items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Terminal className="h-3 w-3 text-accent" />
+                          <span className="font-bold uppercase tracking-widest text-muted-foreground">{t.ai_log}</span>
+                        </div>
+                        {isAnalyzing && (
+                          <div className="flex items-center gap-2">
+                            <BrainCircuit className="h-3 w-3 text-accent animate-pulse" />
+                            <span className="text-[9px] text-accent animate-pulse">PROCESSING...</span>
+                          </div>
+                        )}
+                      </CardHeader>
+                      <CardContent className="p-0">
+                        <ScrollArea className="h-40 p-3" ref={logScrollRef}>
+                          <div className="space-y-1">
+                            {aiLogs.length === 0 && <p className="text-muted-foreground/30 italic">No activity recorded yet...</p>}
+                            {aiLogs.map(log => (
+                              <div key={log.id} className="flex gap-2 leading-tight">
+                                <span className="text-muted-foreground shrink-0">[{new Date(log.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}]</span>
+                                <span className={
+                                  log.type === 'error' ? 'text-destructive' :
+                                  log.type === 'brain' ? 'text-accent' :
+                                  log.type === 'hardware' ? 'text-emerald-500' :
+                                  'text-muted-foreground'
+                                }>
+                                  {log.type === 'brain' && <BrainCircuit className="inline h-2.5 w-2.5 mr-1" />}
+                                  {log.type === 'hardware' && <Zap className="inline h-2.5 w-2.5 mr-1" />}
+                                  {log.message}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      </CardContent>
+                    </Card>
                   </div>
                   <div className="lg:col-span-1">
                     <AlertList alerts={alerts.slice(0, 5)} language={language} />

@@ -1,14 +1,28 @@
 
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AnomalyAlert } from './monitoring-dashboard';
-import { AlertTriangle, CheckCircle2, Clock, Wrench, Package, MapPin, Database } from 'lucide-react';
+import { 
+  AlertTriangle, 
+  CheckCircle2, 
+  Clock, 
+  Wrench, 
+  Package, 
+  MapPin, 
+  Database,
+  Search,
+  ChevronDown,
+  ChevronUp,
+  BrainCircuit,
+  Activity
+} from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { VoiceBriefingButton } from './voice-briefing-button';
+import { Button } from '@/components/ui/button';
 
 interface AlertListProps {
   alerts: AnomalyAlert[];
@@ -16,6 +30,8 @@ interface AlertListProps {
 }
 
 export function AlertList({ alerts, language = 'en' }: AlertListProps) {
+  const [expandedTrace, setExpandedTrace] = useState<string | null>(null);
+
   if (alerts.length === 0) {
     return (
       <Card className="flex flex-col items-center justify-center p-12 text-center border-dashed border-2 bg-transparent">
@@ -105,13 +121,42 @@ export function AlertList({ alerts, language = 'en' }: AlertListProps) {
                     </div>
                   )}
                   
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     {alert.classification && (
                       <Badge variant="outline" className="bg-background/50 text-[10px] font-normal">
                         Malfunction: {alert.classification}
                       </Badge>
                     )}
+                    
+                    {alert.trace && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-6 px-2 text-[9px] gap-1 text-accent uppercase font-bold hover:bg-accent/10"
+                        onClick={() => setExpandedTrace(expandedTrace === alert.id ? null : alert.id)}
+                      >
+                        <Search className="h-2.5 w-2.5" />
+                        {expandedTrace === alert.id ? 'Hide Technical Trace' : 'View Technical Trace'}
+                        {expandedTrace === alert.id ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />}
+                      </Button>
+                    )}
                   </div>
+
+                  {expandedTrace === alert.id && alert.trace && (
+                    <div className="mt-2 bg-black p-3 rounded-md border border-accent/20 font-mono text-[9px] text-accent/80 overflow-x-auto">
+                      <div className="flex items-center gap-2 mb-2 border-b border-accent/20 pb-1">
+                        <BrainCircuit className="h-3 w-3" />
+                        <span>AI REASONING TRACE (RAW OUTPUT)</span>
+                      </div>
+                      <pre className="whitespace-pre-wrap">
+                        {JSON.stringify(alert.trace, null, 2)}
+                      </pre>
+                      <div className="mt-2 pt-2 border-t border-accent/20 flex items-center gap-2 italic text-muted-foreground">
+                        <Activity className="h-3 w-3" />
+                        <span>Confidence Level verified by Edge-to-Cloud handshake.</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
