@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
@@ -15,6 +14,7 @@ import { ReportList } from './report-list';
 import { MaintenanceInsights } from './maintenance-insights';
 import { HealthCertificate } from './health-certificate';
 import { DiagnosticChat } from './diagnostic-chat';
+import { VisualScanModal } from './visual-scan-modal';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -28,10 +28,10 @@ import {
   TrendingUp, 
   ShieldCheck, 
   Languages, 
-  Zap,
   Terminal,
   BrainCircuit,
-  Loader2
+  Loader2,
+  Camera
 } from 'lucide-react';
 import { detectAndClassifyAnomalies, DetectAndClassifyAnomaliesOutput } from '@/ai/flows/detect-and-classify-anomalies';
 import { generateAnomalyExplanation } from '@/ai/flows/generate-anomaly-explanation';
@@ -40,6 +40,7 @@ import { useFirestore, useUser } from '@/firebase';
 import { collection, addDoc, query, orderBy, limit, doc } from 'firebase/firestore';
 import { useCollection, useDoc } from '@/firebase';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { VisualDiagnosticOutput } from '@/ai/flows/visual-diagnostic-flow';
 
 export type SensorReading = {
   timestamp: number;
@@ -112,7 +113,6 @@ export function MonitoringDashboard() {
   const [alerts, setAlerts] = useState<AnomalyAlert[]>([]);
   const [aiLogs, setAiLogs] = useState<AiLogEntry[]>([]);
   const [isConnected, setIsConnected] = useState(false);
-  // Findings Fixed: Raising default max load to 92 to match Toyota Etios dataset performance
   const [thresholds, setThresholds] = useState({ min: 20, max: 92 });
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [inferenceCount, setInferenceCount] = useState(0);
@@ -121,12 +121,11 @@ export function MonitoringDashboard() {
   
   const [currentVibration, setCurrentVibration] = useState<number | null>(null);
   const [rpm, setRpm] = useState(0);
-  const [temp, setTemp] = useState(0);
+  const [temp, setTemp] = useState(85);
   const [ltft, setLtft] = useState(0);
   const [healthScore, setHealthScore] = useState(100);
   
   const [tokenUsage, setTokenUsage] = useState(54000);
-  const [sequentialSteps, setSequentialSteps] = useState(0);
 
   const lastAiCallTimestamp = useRef(0);
   const logScrollRef = useRef<HTMLDivElement>(null);
@@ -158,7 +157,7 @@ export function MonitoringDashboard() {
     return query(collection(db, 'readings'), orderBy('timestamp', 'desc'), limit(50));
   }, [db]);
 
-  const { data: dbReadings, loading: readingsLoading } = useCollection(readingsQuery);
+  const { data: dbReadings } = useCollection(readingsQuery);
 
   const allReadings = useMemo(() => {
     return (dbReadings || [])
@@ -173,7 +172,7 @@ export function MonitoringDashboard() {
   }, [dbReadings]);
 
   useEffect(() => {
-    if (currentVibration) {
+    if (currentVibration !== null) {
       const vibPenalty = Math.max(0, (currentVibration - 50) * 0.5);
       const tempPenalty = Math.max(0, (temp - 95) * 1.5);
       const fuelPenalty = Math.abs(ltft) > 10 ? 10 : 0;
@@ -182,13 +181,33 @@ export function MonitoringDashboard() {
     }
   }, [currentVibration, temp, ltft]);
 
+  const handleVisualScanResult = (result: VisualDiagnosticOutput) => {
+    addAiLog(`Visual Audit Complete: ${result.identification}. Diagnosis: ${result.diagnosis}. Confidence: ${Math.round(result.confidence * 100)}%`, 'brain');
+    setTokenUsage(prev => prev + 12000); // Visual scans are token-heavy
+    setInferenceCount(prev => prev + 1);
+    
+    // Add to alerts list if severity is high or critical
+    if (result.severity === 'high' || result.severity === 'critical') {
+      setAlerts(prev => [{
+        id: crypto.randomUUID(),
+        timestamp: Date.now(),
+        isAnomaly: true,
+        anomalyType: `Visual: ${result.identification}`,
+        classification: result.diagnosis,
+        severity: result.severity,
+        recommendation: result.recommendation,
+        advice: result.recommendation,
+        trace: result
+      }, ...prev]);
+    }
+  };
+
   const handleNewReading = useCallback(async (value: number) => {
     const timestamp = Date.now();
     setCurrentVibration(value);
     
     const newRpm = 1200 + (Math.random() - 0.5) * 100;
     const newTemp = 85 + (value * 0.1) + (Math.random() * 2);
-    // Simulate LTFT based on engine load and noise
     const newLtft = (value > 85 ? 12 : 3) + (Math.random() - 0.5) * 2;
     setRpm(newRpm);
     setTemp(newTemp);
@@ -206,7 +225,6 @@ export function MonitoringDashboard() {
       });
     }
 
-    // Logic Refined: Added LTFT check to trigger AI even if value is below 92
     const triggerAi = value > thresholds.max || value < thresholds.min || Math.abs(newLtft) > 10;
     
     if (triggerAi) {
@@ -214,9 +232,8 @@ export function MonitoringDashboard() {
       if (now - lastAiCallTimestamp.current > MIN_AI_INTERVAL) {
         setIsAnalyzing(true);
         lastAiCallTimestamp.current = now;
-        addAiLog(`Telemetry Breach Detected. Load: ${value.toFixed(1)}%, LTFT: ${newLtft.toFixed(1)}%. Running ${persona} Auditor.`, 'brain');
+        addAiLog(`Telemetry Breach. Load: ${value.toFixed(1)}%, LTFT: ${newLtft.toFixed(1)}%. Running ${persona} Strategist.`, 'brain');
         try {
-          setSequentialSteps(1);
           const detectionResult = await detectAndClassifyAnomalies({
             sensorId: 'OBD-RPM-01',
             value,
@@ -229,14 +246,12 @@ export function MonitoringDashboard() {
           });
           
           if (detectionResult.isAnomaly) {
-            setSequentialSteps(2);
             const explanationResult = await generateAnomalyExplanation({
               vibrationValue: value,
               anomalyDetails: detectionResult.anomalyType || 'Engine Instability',
               machineType: 'Toyota Etios (2014)'
             });
             
-            setSequentialSteps(3);
             setTokenUsage(prev => prev + 4800);
             setInferenceCount(prev => prev + 1);
 
@@ -250,10 +265,9 @@ export function MonitoringDashboard() {
             }, ...prev]);
           }
         } catch (error) {
-          addAiLog("A2A reasoning depth exceeded. Core logic fallback active.", 'error');
+          addAiLog("Reasoning depth exceeded. Falling back to local perception.", 'error');
         } finally { 
           setIsAnalyzing(false); 
-          setSequentialSteps(0);
         }
       }
     }
@@ -302,7 +316,7 @@ export function MonitoringDashboard() {
               )}
               <div className="flex flex-col">
                 <h1 className="text-xs sm:text-sm font-bold tracking-tight truncate max-w-[100px] xs:max-w-none">{t.title}</h1>
-                <Badge variant="outline" className="text-[7px] h-3 w-fit border-emerald-500/50 text-emerald-500">TOP 15</Badge>
+                <Badge variant="outline" className="text-[7px] h-3 w-fit border-emerald-500/50 text-emerald-500">CAR-BENCH FINALIST</Badge>
               </div>
             </div>
             
@@ -319,9 +333,11 @@ export function MonitoringDashboard() {
               </div>
 
               <div className="hidden lg:flex flex-col items-end border-r border-border px-4 h-8 justify-center">
-                <span className="text-[8px] text-muted-foreground uppercase font-bold">Tokens</span>
-                <span className="text-[10px] font-mono font-bold text-accent">{(tokenUsage/1000).toFixed(1)}K</span>
+                <span className="text-[8px] text-muted-foreground uppercase font-bold">Inference Budget</span>
+                <span className="text-[10px] font-mono font-bold text-accent">{(tokenUsage/1000).toFixed(1)}K / 500K</span>
               </div>
+
+              <VisualScanModal onScanComplete={handleVisualScanResult} language={language} />
 
               <Button variant="ghost" size="icon" onClick={toggleLanguage} className="h-8 w-8 text-muted-foreground">
                 <Languages className="h-4 w-4" />
