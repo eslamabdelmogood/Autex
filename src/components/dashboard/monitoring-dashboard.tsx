@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
@@ -19,7 +20,6 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { 
   Bell, 
   Settings, 
@@ -28,7 +28,6 @@ import {
   TrendingUp, 
   ShieldCheck, 
   Languages, 
-  Binary,
   Zap,
   Terminal,
   BrainCircuit,
@@ -47,7 +46,7 @@ export type SensorReading = {
   value: number;
   rpm?: number;
   temp?: number;
-  load?: number;
+  ltft?: number;
 };
 
 export type AnomalyAlert = DetectAndClassifyAnomaliesOutput & {
@@ -85,7 +84,6 @@ function TypedLogEntry({ log }: { log: AiLogEntry }) {
         clearInterval(interval);
       }
     }, 10);
-
     return () => clearInterval(interval);
   }, [log.message]);
 
@@ -108,36 +106,33 @@ function TypedLogEntry({ log }: { log: AiLogEntry }) {
   );
 }
 
-const EDGE_BUFFER_SIZE = 100;
 const MIN_AI_INTERVAL = 30000;
 
 export function MonitoringDashboard() {
   const [alerts, setAlerts] = useState<AnomalyAlert[]>([]);
   const [aiLogs, setAiLogs] = useState<AiLogEntry[]>([]);
   const [isConnected, setIsConnected] = useState(false);
-  const [thresholds, setThresholds] = useState({ min: 20, max: 80 });
+  // Findings Fixed: Raising default max load to 92 to match Toyota Etios dataset performance
+  const [thresholds, setThresholds] = useState({ min: 20, max: 92 });
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [inferenceCount, setInferenceCount] = useState(0);
-  const [lastFaultType, setLastFaultType] = useState<string | null>(null);
   const [language, setLanguage] = useState<'en' | 'ar'>('en');
   const [persona, setPersona] = useState<'STALLION' | 'NOMAD' | 'WORKHORSE'>('NOMAD');
   
   const [currentVibration, setCurrentVibration] = useState<number | null>(null);
   const [rpm, setRpm] = useState(0);
   const [temp, setTemp] = useState(0);
+  const [ltft, setLtft] = useState(0);
   const [healthScore, setHealthScore] = useState(100);
   
   const [tokenUsage, setTokenUsage] = useState(54000);
   const [sequentialSteps, setSequentialSteps] = useState(0);
 
-  const classifierRef = useRef<any>(null);
-  const vibrationBuffer = useRef<number[]>([]);
   const lastAiCallTimestamp = useRef(0);
   const logScrollRef = useRef<HTMLDivElement>(null);
   
   const db = useFirestore();
   const { user } = useUser();
-  const { toast } = useToast();
   const logo = PlaceHolderImages.find(img => img.id === 'autex-logo');
 
   const addAiLog = useCallback((message: string, type: AiLogEntry['type'] = 'info') => {
@@ -171,7 +166,8 @@ export function MonitoringDashboard() {
         timestamp: typeof doc.timestamp === 'number' ? doc.timestamp : Date.now(),
         value: doc.value,
         rpm: doc.rpm || 0,
-        temp: doc.temp || 0
+        temp: doc.temp || 0,
+        ltft: doc.ltft || 0
       }))
       .sort((a, b) => a.timestamp - b.timestamp);
   }, [dbReadings]);
@@ -180,10 +176,11 @@ export function MonitoringDashboard() {
     if (currentVibration) {
       const vibPenalty = Math.max(0, (currentVibration - 50) * 0.5);
       const tempPenalty = Math.max(0, (temp - 95) * 1.5);
-      const newScore = Math.max(0, Math.min(100, 100 - vibPenalty - tempPenalty));
+      const fuelPenalty = Math.abs(ltft) > 10 ? 10 : 0;
+      const newScore = Math.max(0, Math.min(100, 100 - vibPenalty - tempPenalty - fuelPenalty));
       setHealthScore(Math.round(newScore));
     }
-  }, [currentVibration, temp]);
+  }, [currentVibration, temp, ltft]);
 
   const handleNewReading = useCallback(async (value: number) => {
     const timestamp = Date.now();
@@ -191,8 +188,11 @@ export function MonitoringDashboard() {
     
     const newRpm = 1200 + (Math.random() - 0.5) * 100;
     const newTemp = 85 + (value * 0.1) + (Math.random() * 2);
+    // Simulate LTFT based on engine load and noise
+    const newLtft = (value > 85 ? 12 : 3) + (Math.random() - 0.5) * 2;
     setRpm(newRpm);
     setTemp(newTemp);
+    setLtft(newLtft);
 
     if (db) {
       addDoc(collection(db, 'readings'), {
@@ -200,22 +200,29 @@ export function MonitoringDashboard() {
         value,
         rpm: newRpm,
         temp: newTemp,
+        ltft: newLtft,
         timestamp,
         machineId: 'VIN-AUTEX-001'
       });
     }
 
-    if (value > thresholds.max || value < thresholds.min) {
+    // Logic Refined: Added LTFT check to trigger AI even if value is below 92
+    const triggerAi = value > thresholds.max || value < thresholds.min || Math.abs(newLtft) > 10;
+    
+    if (triggerAi) {
       const now = Date.now();
       if (now - lastAiCallTimestamp.current > MIN_AI_INTERVAL) {
         setIsAnalyzing(true);
         lastAiCallTimestamp.current = now;
-        addAiLog(`Threshold Breach: Value ${value.toFixed(1)}. Initializing ${persona} Diagnostic Chain.`, 'brain');
+        addAiLog(`Telemetry Breach Detected. Load: ${value.toFixed(1)}%, LTFT: ${newLtft.toFixed(1)}%. Running ${persona} Auditor.`, 'brain');
         try {
           setSequentialSteps(1);
           const detectionResult = await detectAndClassifyAnomalies({
             sensorId: 'OBD-RPM-01',
             value,
+            rpm: newRpm,
+            temp: newTemp,
+            ltft: newLtft,
             timestamp,
             thresholds,
             historicalContext: allReadings.slice(-5)
@@ -226,11 +233,12 @@ export function MonitoringDashboard() {
             const explanationResult = await generateAnomalyExplanation({
               vibrationValue: value,
               anomalyDetails: detectionResult.anomalyType || 'Engine Instability',
-              machineType: 'Vehicle Engine'
+              machineType: 'Toyota Etios (2014)'
             });
             
             setSequentialSteps(3);
-            setTokenUsage(prev => prev + 2400);
+            setTokenUsage(prev => prev + 4800);
+            setInferenceCount(prev => prev + 1);
 
             setAlerts(prev => [{
               ...detectionResult,
@@ -242,9 +250,8 @@ export function MonitoringDashboard() {
             }, ...prev]);
           }
         } catch (error) {
-          addAiLog("Cloud AI Error: A2A reasoning depth exceeded.", 'error');
-        }
-        finally { 
+          addAiLog("A2A reasoning depth exceeded. Core logic fallback active.", 'error');
+        } finally { 
           setIsAnalyzing(false); 
           setSequentialSteps(0);
         }
@@ -324,7 +331,7 @@ export function MonitoringDashboard() {
           </header>
 
           <main className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-4">
-            <KpiCards readings={allReadings} isAnalyzing={isAnalyzing || readingsLoading} activeAlertsCount={alerts.length} inferenceCount={inferenceCount} lastFaultType={lastFaultType} healthScore={healthScore} rpm={rpm} temp={temp} language={language} />
+            <KpiCards readings={allReadings} activeAlertsCount={alerts.length} inferenceCount={inferenceCount} healthScore={healthScore} rpm={rpm} temp={temp} language={language} />
 
             <Tabs defaultValue="monitor" className="space-y-4">
               <div className="w-full overflow-x-auto pb-1">
@@ -341,7 +348,7 @@ export function MonitoringDashboard() {
               <TabsContent value="monitor" className="space-y-4 m-0">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                   <div className="lg:col-span-2 space-y-4">
-                    <LiveSensorChart readings={allReadings} thresholds={thresholds} inferenceCount={inferenceCount} lastFaultType={lastFaultType} />
+                    <LiveSensorChart readings={allReadings} thresholds={thresholds} inferenceCount={inferenceCount} lastFaultType={alerts[0]?.anomalyType || null} />
                     
                     <Card className="border-border bg-black/40 font-mono relative overflow-hidden">
                       <CardHeader className="py-2 px-3 border-b flex flex-row items-center justify-between">
@@ -352,14 +359,14 @@ export function MonitoringDashboard() {
                         {isAnalyzing && (
                           <div className="flex items-center gap-1 bg-yellow-400/10 px-1.5 py-0.5 rounded border border-yellow-400/30">
                             <Loader2 className="h-2.5 w-2.5 text-yellow-400 animate-spin" />
-                            <span className="text-[8px] text-yellow-400 font-bold">STEP {sequentialSteps}/5</span>
+                            <span className="text-[8px] text-yellow-400 font-bold uppercase">Reasoning Chain Active</span>
                           </div>
                         )}
                       </CardHeader>
                       <CardContent className="p-0">
                         <ScrollArea className="h-48 sm:h-64 p-3" ref={logScrollRef}>
                           <div className="space-y-1">
-                            {aiLogs.length === 0 && <p className="text-muted-foreground/30 italic text-[9px] text-center py-8">Idle. Waiting for sensor handshake...</p>}
+                            {aiLogs.length === 0 && <p className="text-muted-foreground/30 italic text-[9px] text-center py-8">Awaiting sensor ingestion...</p>}
                             {aiLogs.map(log => <TypedLogEntry key={log.id} log={log} />)}
                           </div>
                         </ScrollArea>

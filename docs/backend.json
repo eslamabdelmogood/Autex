@@ -31,7 +31,18 @@
         },
         "value": {
           "type": "number",
-          "description": "The numeric value recorded."
+          "description": "The numeric value recorded (Engine Load %)."
+        },
+        "rpm": {
+          "type": "number"
+        },
+        "temp": {
+          "type": "number",
+          "description": "Coolant temperature in Celsius."
+        },
+        "ltft": {
+          "type": "number",
+          "description": "Long Term Fuel Trim percentage."
         },
         "timestamp": {
           "type": "number",
