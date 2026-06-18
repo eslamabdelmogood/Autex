@@ -8,7 +8,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import wav from 'wav';
+import * as wav from 'wav';
 import {googleAI} from '@genkit-ai/google-genai';
 
 const VoiceBriefingInputSchema = z.object({
@@ -67,13 +67,14 @@ async function toWav(
   sampleWidth = 2
 ): Promise<string> {
   return new Promise((resolve, reject) => {
+    // @ts-ignore - The wav package often has typings issues with the Writer constructor in ESM
     const writer = new wav.Writer({
       channels,
       sampleRate: rate,
       bitDepth: sampleWidth * 8,
     });
 
-    let bufs = [] as any[];
+    let bufs: Buffer[] = [];
     writer.on('error', reject);
     writer.on('data', function (d) {
       bufs.push(d);
