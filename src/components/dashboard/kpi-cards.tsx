@@ -1,127 +1,99 @@
-
 "use client";
 
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { SensorReading } from './monitoring-dashboard';
-import { ShieldAlert, BrainCircuit, Zap, Thermometer, ShieldCheck } from 'lucide-react';
+import { ShieldAlert, Zap, Thermometer, ShieldCheck, BrainCircuit } from 'lucide-react';
 
 interface KpiCardsProps {
-  readings: SensorReading[];
-  isAnalyzing: boolean;
-  activeAlertsCount: number;
-  inferenceCount: number;
-  lastFaultType: string | null;
-  currentValue?: number | null;
   healthScore: number;
   rpm: number;
   temp: number;
+  activeAlertsCount: number;
+  inferenceCount: number;
   language?: 'en' | 'ar';
 }
 
 export function KpiCards({ 
-  readings, 
-  isAnalyzing, 
-  activeAlertsCount, 
-  inferenceCount, 
-  lastFaultType, 
-  currentValue,
   healthScore,
   rpm,
   temp,
+  activeAlertsCount, 
+  inferenceCount, 
   language = 'en'
 }: KpiCardsProps) {
   const translations = {
     en: {
-      health: "Health (HPI)",
-      rpm: "Engine RPM",
-      temp: "System Temp",
-      alerts: "Active Alerts",
-      edge: "Edge Analysis",
-      runs: "Runs",
-      celsius: "Celsius",
-      unit_rpm: "RPM"
+      health: "Health",
+      rpm: "RPM",
+      temp: "Temp",
+      alerts: "Alerts",
+      edge: "Edge"
     },
     ar: {
-      health: "الصحة (HPI)",
-      rpm: "دوران المحرك",
-      temp: "حرارة النظام",
-      alerts: "تنبيهات نشطة",
-      edge: "تحليل الحافة",
-      runs: "عمليات",
-      celsius: "سيليزية",
-      unit_rpm: "دورة"
+      health: "الصحة",
+      rpm: "دوران",
+      temp: "حرارة",
+      alerts: "تنبيهات",
+      edge: "الحافة"
     }
   };
 
   const t = translations[language];
   
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-      {/* HPI - Health Performance Index */}
-      <Card className="bg-card/40 border-accent/20 relative overflow-hidden group">
-        <div className={`absolute inset-0 opacity-5 bg-gradient-to-br from-accent to-transparent transition-opacity ${healthScore < 80 ? 'from-destructive' : ''}`} />
-        <CardContent className="p-4 md:p-5 flex items-center justify-between relative z-10">
-          <div className="space-y-1">
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t.health}</p>
-            <div className="flex items-baseline gap-1">
-              <h3 className={`text-2xl md:text-3xl font-black ${healthScore > 90 ? 'text-emerald-500' : healthScore > 70 ? 'text-accent' : 'text-destructive'}`}>
-                {healthScore}%
-              </h3>
-            </div>
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-4">
+      {/* HPI Card */}
+      <Card className="bg-card/40 border-accent/10 relative overflow-hidden col-span-2 sm:col-span-1">
+        <CardContent className="p-3 sm:p-5 flex items-center justify-between">
+          <div className="space-y-0.5">
+            <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">{t.health}</p>
+            <h3 className={`text-xl sm:text-2xl font-black ${healthScore > 85 ? 'text-emerald-500' : 'text-accent'}`}>
+              {healthScore}%
+            </h3>
           </div>
-          <ShieldCheck className={`h-6 md:h-8 w-6 md:w-8 ${healthScore > 90 ? 'text-emerald-500' : healthScore > 70 ? 'text-accent' : 'text-destructive'} opacity-40`} />
+          <ShieldCheck className="h-5 w-5 sm:h-7 sm:w-7 text-accent/30" />
         </CardContent>
       </Card>
 
       <Card className="bg-card/40 border-border">
-        <CardContent className="p-4 md:p-5 flex items-center justify-between">
-          <div className="space-y-1">
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t.rpm}</p>
-            <div className="flex items-baseline gap-1">
-              <h3 className="text-xl md:text-2xl font-bold font-mono">{Math.round(rpm)}</h3>
-              <span className="text-[10px] text-muted-foreground uppercase">{t.unit_rpm}</span>
-            </div>
+        <CardContent className="p-3 sm:p-5 flex items-center justify-between">
+          <div className="space-y-0.5">
+            <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">{t.rpm}</p>
+            <h3 className="text-xl sm:text-2xl font-bold font-mono">{Math.round(rpm)}</h3>
           </div>
-          <Zap className="h-5 md:h-6 w-5 md:w-6 text-accent/50" />
+          <Zap className="h-5 w-5 text-accent/30" />
         </CardContent>
       </Card>
 
       <Card className="bg-card/40 border-border">
-        <CardContent className="p-4 md:p-5 flex items-center justify-between">
-          <div className="space-y-1">
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t.temp}</p>
-            <div className="flex items-baseline gap-1">
-              <h3 className="text-xl md:text-2xl font-bold font-mono">{temp.toFixed(1)}°</h3>
-              <span className="text-[10px] text-muted-foreground uppercase">{t.celsius}</span>
-            </div>
+        <CardContent className="p-3 sm:p-5 flex items-center justify-between">
+          <div className="space-y-0.5">
+            <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">{t.temp}</p>
+            <h3 className="text-xl sm:text-2xl font-bold font-mono">{Math.round(temp)}°</h3>
           </div>
-          <Thermometer className="h-5 md:h-6 w-5 md:w-6 text-orange-500/50" />
+          <Thermometer className="h-5 w-5 text-orange-500/30" />
         </CardContent>
       </Card>
 
       <Card className="bg-card/40 border-border">
-        <CardContent className="p-4 md:p-5 flex items-center justify-between">
-          <div className="space-y-1">
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t.alerts}</p>
-            <h3 className={`text-xl md:text-2xl font-bold ${activeAlertsCount > 0 ? 'text-destructive animate-pulse' : 'text-foreground'}`}>
+        <CardContent className="p-3 sm:p-5 flex items-center justify-between">
+          <div className="space-y-0.5">
+            <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">{t.alerts}</p>
+            <h3 className={`text-xl sm:text-2xl font-bold ${activeAlertsCount > 0 ? 'text-destructive' : 'text-foreground'}`}>
               {activeAlertsCount}
             </h3>
           </div>
-          <ShieldAlert className={`h-5 md:h-6 w-5 md:w-6 ${activeAlertsCount > 0 ? 'text-destructive' : 'text-muted-foreground/30'}`} />
+          <ShieldAlert className="h-5 w-5 text-destructive/30" />
         </CardContent>
       </Card>
 
-      <Card className="bg-card/40 border-border">
-        <CardContent className="p-4 md:p-5 flex items-center justify-between">
-          <div className="space-y-1">
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t.edge}</p>
-            <div className="flex items-baseline gap-1">
-              <h3 className="text-xl md:text-2xl font-bold text-emerald-500">{inferenceCount}</h3>
-              <span className="text-[10px] text-muted-foreground uppercase">{t.runs}</span>
-            </div>
+      <Card className="bg-card/40 border-border hidden lg:flex">
+        <CardContent className="p-3 sm:p-5 flex items-center justify-between w-full">
+          <div className="space-y-0.5">
+            <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">{t.edge}</p>
+            <h3 className="text-xl sm:text-2xl font-bold text-emerald-500">{inferenceCount}</h3>
           </div>
-          <BrainCircuit className="h-5 md:h-6 w-5 md:w-6 text-emerald-500/50" />
+          <BrainCircuit className="h-5 w-5 text-emerald-500/30" />
         </CardContent>
       </Card>
     </div>
