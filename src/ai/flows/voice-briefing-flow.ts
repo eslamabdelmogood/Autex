@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview A Genkit flow for converting diagnostic text to speech for hands-free maintenance.
@@ -8,8 +7,10 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import * as wav from 'wav';
 import {googleAI} from '@genkit-ai/google-genai';
+
+// Use require for the 'wav' package to avoid module resolution issues in Next.js/Turbopack
+const wav = require('wav');
 
 const VoiceBriefingInputSchema = z.object({
   text: z.string().describe('The diagnostic text to convert to speech.'),
@@ -67,7 +68,7 @@ async function toWav(
   sampleWidth = 2
 ): Promise<string> {
   return new Promise((resolve, reject) => {
-    // @ts-ignore - The wav package often has typings issues with the Writer constructor in ESM
+    // Creating the wav Writer using the required module
     const writer = new wav.Writer({
       channels,
       sampleRate: rate,
@@ -76,7 +77,7 @@ async function toWav(
 
     let bufs: Buffer[] = [];
     writer.on('error', reject);
-    writer.on('data', function (d) {
+    writer.on('data', function (d: Buffer) {
       bufs.push(d);
     });
     writer.on('end', function () {
