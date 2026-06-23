@@ -8,8 +8,8 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
-const MONGO_API_KEY = "al-0fuD4AYEXDCXc5GuQGFcnGXlnHIVIpOv5BGHchJMLfl";
-const MONGO_ENDPOINT = "https://data.mongodb-api.com/app/data-abcde/endpoint/data/v1/action/find";
+const MONGO_API_KEY = process.env.MONGO_DATA_API_KEY;
+const MONGO_ENDPOINT = process.env.MONGO_DATA_API_ENDPOINT;
 
 const getInventoryFromMongo = ai.defineTool(
   {
@@ -21,6 +21,16 @@ const getInventoryFromMongo = ai.defineTool(
     outputSchema: z.string(),
   },
   async (input) => {
+    const fallbackInventory = [
+      { partId: "SP-42", part: "Iridium Spark Plug", stock: 24, location: "Bay 1" },
+      { partId: "CO-09", part: "Coolant Expansion Tank", stock: 2, location: "Bay 4" },
+      { partId: "SN-12", part: "O2 Sensor - Upstream", stock: 5, location: "Shelf A" }
+    ];
+
+    if (!MONGO_API_KEY || !MONGO_ENDPOINT) {
+      return JSON.stringify(fallbackInventory);
+    }
+
     try {
       const response = await fetch(MONGO_ENDPOINT, {
         method: 'POST',
@@ -37,17 +47,13 @@ const getInventoryFromMongo = ai.defineTool(
       });
 
       if (!response.ok) {
-        return JSON.stringify([
-          { partId: "SP-42", part: "Iridium Spark Plug", stock: 24, location: "Bay 1" },
-          { partId: "CO-09", part: "Coolant Expansion Tank", stock: 2, location: "Bay 4" },
-          { partId: "SN-12", part: "O2 Sensor - Upstream", stock: 5, location: "Shelf A" }
-        ]);
+        return JSON.stringify(fallbackInventory);
       }
 
       const data = await response.json();
       return JSON.stringify(data.documents || []);
     } catch (error) {
-      return "Unable to fetch inventory. Suggest general mechanical inspection.";
+      return JSON.stringify(fallbackInventory);
     }
   }
 );

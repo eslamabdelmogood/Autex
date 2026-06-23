@@ -26,9 +26,9 @@ export function FirebaseProvider({
   auth,
 }: {
   children: ReactNode;
-  app: FirebaseApp;
-  db: Firestore;
-  auth: Auth;
+  app: FirebaseApp | null;
+  db: Firestore | null;
+  auth: Auth | null;
 }) {
   return (
     <FirebaseContext.Provider value={{ app, db, auth }}>

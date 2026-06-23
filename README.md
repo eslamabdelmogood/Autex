@@ -14,6 +14,13 @@ Autex is a high-fidelity predictive maintenance platform built for automotive sm
 - **Proof-of-Condition**: Digital vehicle health certificates documenting performance history to increase asset resale value.
 - **PWA Ready**: Installable on mobile devices with offline-first capabilities for "Edge Survival" on the road.
 
+## Strategic Algorithm Direction
+Autex should evolve around a **Morphological Predictive Allocation Engine (MPAE)**: a three-layer strategy model that combines future-risk simulation, long-horizon stability scoring, and dynamic objective weighting. This is a better fit for Autex than directly importing the container-yard OGC/Black Dragon optimizer because Autex needs adaptive automotive decisions, not static yard allocation. See [`docs/mpae-architecture.md`](docs/mpae-architecture.md).
+
+
+## CAR-bench Track 2 Readiness
+Nahed Innovation has been selected for CAR-bench Track 2. Autex now includes a Track 2 compute-budget helper for Cerebras `gpt-oss` submissions, covering the 5 sequential-call limit, 500K average token budget, and A2A `turn_metrics` reporting. See [`docs/car-bench-track2-architecture.md`](docs/car-bench-track2-architecture.md).
+
 ## Agentic Architecture
 Autex operates as a two-tier agentic system:
 1. **The Sentinel (Local)**: A low-latency perception agent that watches for mechanical anomalies (Misfires, Resonance, Friction).
@@ -24,6 +31,16 @@ Autex operates as a two-tier agentic system:
 - **Edge Survival**: Unlike competitors who require 5G/4G, Autex runs local inference and buffers data offline, ensuring 100% data integrity in remote areas.
 - **Sound-Based Reasoning**: The AI is specifically trained to diagnose "Sound Signatures" (Ticking, Squealing, Clanking), a rare feature that replicates the ears of a master mechanic.
 - **Financial Value Retainer**: By issuing "Condition Certificates," the app is not just a tool, but a financial vehicle that protects and increases the asset's resale value.
+
+
+## Submission ZIP
+Binary archives are intentionally not committed to GitHub because PR views may reject or hide ZIP files. Generate the final local archive when needed with:
+
+```bash
+npm run submission:zip
+```
+
+The command writes `dist/autex-carbench-final-<commit>.zip`; `dist/` is ignored by Git.
 
 ## Getting Started
 
