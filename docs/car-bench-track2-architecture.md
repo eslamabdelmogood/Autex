@@ -98,3 +98,25 @@ npm run carbench:reliability
 ```
 
 The demo currently covers the sunroof examples from the benchmark overview: weather-check policy, removed sunshade-tool hallucination prevention, and stored-preference disambiguation.
+
+
+## Official adapter surface
+
+The project now exposes a CAR-bench-style adapter in `src/lib/car-bench-agent-adapter.ts` with:
+
+- `get_init_state()`
+- `generate_next_message()`
+
+The adapter composes:
+
+- MPAE for deterministic risk and strategy pre-scoring,
+- the CAR-bench reliability guard for policy / hallucination / disambiguation handling,
+- the Track 2 budget guard for sequential-step and token reporting,
+- an optional Cerebras `gpt-oss` call path when `CEREBRAS_API_KEY` is configured,
+- a deterministic fallback path when the key is not configured.
+
+Demo command:
+
+```bash
+npm run carbench:adapter
+```

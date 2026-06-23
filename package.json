@@ -14,7 +14,8 @@
     "carbench:budget": "tsx scripts/run-carbench-budget-demo.ts",
     "carbench:reliability": "tsx scripts/run-carbench-reliability-demo.ts",
     "submission:zip": "node scripts/create-submission-zip.mjs",
-    "carbench:stress": "tsx scripts/run-carbench-stress-simulation.ts"
+    "carbench:stress": "tsx scripts/run-carbench-stress-simulation.ts",
+    "carbench:adapter": "tsx scripts/run-carbench-agent-adapter-demo.ts"
   },
   "dependencies": {
     "@genkit-ai/google-genai": "^1.28.0",
