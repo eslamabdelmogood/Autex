@@ -79,6 +79,8 @@ const mpaeCases: Array<{ id: string; expectedStrategy: string; telemetry: MpaeTe
   { id: 'fuel_trim_drift', expectedStrategy: 'stop-and-inspect', telemetry: { vibration: 76, rpm: 1320, temp: 94, ltft: 12, healthScore: 78 } },
   { id: 'thermal_vibration_critical', expectedStrategy: 'stop-and-inspect', telemetry: { vibration: 108, rpm: 3100, temp: 111, ltft: 18, healthScore: 42 } },
   { id: 'unstable_low_health', expectedStrategy: 'stop-and-inspect', telemetry: { vibration: 88, rpm: 2400, temp: 101, ltft: 9, healthScore: 34 } },
+  { id: 'health_border_59', expectedStrategy: 'stop-and-inspect', telemetry: { vibration: 48, rpm: 900, temp: 88, ltft: 3, healthScore: 59 } },
+  { id: 'temp_border_106', expectedStrategy: 'stop-and-inspect', telemetry: { vibration: 48, rpm: 900, temp: 106, ltft: 3, healthScore: 92 } },
 ];
 
 const track2Calls: Track2CallRecord[] = [

@@ -90,7 +90,8 @@ export function squidDynamicObjective(context: MpaeContext): MpaeWeights {
   return CONTEXT_WEIGHTS[context];
 }
 
-function selectStrategy(priority: number, stabilityScore: number): MpaeDecision['recommendedStrategy'] {
+function selectStrategy(priority: number, stabilityScore: number, context: MpaeContext): MpaeDecision['recommendedStrategy'] {
+  if (context === 'critical') return 'stop-and-inspect';
   if (priority >= 75 || stabilityScore < 35) return 'stop-and-inspect';
   if (priority >= 55) return 'service-soon';
   if (priority >= 35) return 'stabilize';
@@ -119,7 +120,7 @@ export function runMpaeDecision(
     (100 - stabilityScore) * 0.2
   );
 
-  const recommendedStrategy = selectStrategy(maintenancePriority, stabilityScore);
+  const recommendedStrategy = selectStrategy(maintenancePriority, stabilityScore, context);
 
   return {
     context,
