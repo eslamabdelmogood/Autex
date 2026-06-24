@@ -33,6 +33,10 @@ Autex operates as a two-tier agentic system:
 - **Financial Value Retainer**: By issuing "Condition Certificates," the app is not just a tool, but a financial vehicle that protects and increases the asset's resale value.
 
 
+
+## Evaluation Results
+The latest V3 stress suite reports 37/37 passing cases, and the Toyota Etios OBD2 real-data check shows realistic behavior across 541 samples from roughly 270K rows. See [`docs/car-bench-evaluation-results.md`](docs/car-bench-evaluation-results.md).
+
 ## Submission ZIP
 Binary archives are intentionally not committed to GitHub because PR views may reject or hide ZIP files. Generate the final local archive when needed with:
 
