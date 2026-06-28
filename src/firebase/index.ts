@@ -10,17 +10,22 @@ import {
   getFirestore
 } from 'firebase/firestore';
 import { getAuth, Auth } from 'firebase/auth';
-import { firebaseConfig } from './config';
+import { firebaseConfig, isFirebaseConfigured } from './config';
 
 let appInstance: FirebaseApp | undefined;
 let dbInstance: Firestore | undefined;
 let authInstance: Auth | undefined;
 
 export function initializeFirebase(): {
-  app: FirebaseApp;
-  db: Firestore;
-  auth: Auth;
+  app: FirebaseApp | null;
+  db: Firestore | null;
+  auth: Auth | null;
 } {
+  if (!isFirebaseConfigured) {
+    console.warn('Firebase is not configured. Set NEXT_PUBLIC_FIREBASE_* variables to enable persistence.');
+    return { app: null, db: null, auth: null };
+  }
+
   // Ensure we only initialize once
   if (!appInstance) {
     appInstance = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
