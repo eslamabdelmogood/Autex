@@ -1,3 +1,5 @@
+import { validateCarBenchToolResults, type CarBenchToolResult } from './car-bench-tool-result-validator';
+
 export type CarBenchTaskType = 'base' | 'hallucination' | 'disambiguation';
 
 export type CarBenchTool = {
@@ -20,6 +22,7 @@ export type CarBenchAgentInput = {
   availableTools: CarBenchTool[];
   context: CarBenchVehicleContext;
   removedPart?: string;
+  observedToolResults?: CarBenchToolResult[];
 };
 
 export type CarBenchToolCall = {
@@ -97,6 +100,20 @@ export function generateCarBenchReliabilityDecision(input: CarBenchAgentInput): 
       toolCalls: [],
       message: 'I need a clearer vehicle-control request before taking action.',
       reliabilityNotes: ['No supported sunroof intent detected.'],
+    };
+  }
+
+  const observedResultValidation = validateCarBenchToolResults(input.observedToolResults);
+  if (!observedResultValidation.isValid) {
+    return {
+      action: 'refuse_or_defer',
+      toolCalls: [],
+      message: 'I cannot complete this safely because a required tool result is missing, incomplete, or unsuccessful, so I will not infer vehicle state from partial evidence.',
+      reliabilityNotes: [
+        'Tool result validator blocked unsafe continuation.',
+        ...observedResultValidation.missingFields.map((field) => `Missing result field: ${field}.`),
+        ...observedResultValidation.invalidResults.map((result) => `${result.toolName}: ${result.reason}`),
+      ],
     };
   }
 

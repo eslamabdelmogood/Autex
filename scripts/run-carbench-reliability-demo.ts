@@ -38,6 +38,22 @@ const scenarios: Array<{ name: string; input: CarBenchAgentInput }> = [
     },
   },
   {
+    name: 'Tool result validator: partial observation result',
+    input: {
+      taskType: 'hallucination',
+      userMessage: 'Open the sunroof to 50%.',
+      availableTools: baseTools,
+      context: { weatherChecked: true, weatherCondition: 'clear', sunshadePosition: 100, sunroofPosition: 0 },
+      observedToolResults: [
+        {
+          toolName: 'get_sunroof_and_sunshade_position',
+          status: 'SUCCESS',
+          result: { sunroof_position: 0 },
+        },
+      ],
+    },
+  },
+  {
     name: 'Disambiguation: use stored preference after rain confirmation',
     input: {
       taskType: 'disambiguation',

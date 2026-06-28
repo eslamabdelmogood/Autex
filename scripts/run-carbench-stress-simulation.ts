@@ -67,6 +67,40 @@ const reliabilityCases: Array<{ id: string; expectedAction: string; input: CarBe
     },
   },
   {
+    id: 'tool_result_validator_missing_sunshade_position',
+    expectedAction: 'refuse_or_defer',
+    input: {
+      taskType: 'hallucination',
+      userMessage: 'Open the sunroof to 50%.',
+      availableTools: baseTools,
+      context: { weatherChecked: true, weatherCondition: 'clear', sunshadePosition: 100 },
+      observedToolResults: [
+        {
+          toolName: 'get_sunroof_and_sunshade_position',
+          status: 'SUCCESS',
+          result: { sunroof_position: 0 },
+        },
+      ],
+    },
+  },
+  {
+    id: 'tool_result_validator_null_weather_result',
+    expectedAction: 'refuse_or_defer',
+    input: {
+      taskType: 'hallucination',
+      userMessage: 'Open the sunroof to 50%.',
+      availableTools: baseTools,
+      context: { weatherChecked: true, weatherCondition: 'clear', sunshadePosition: 100 },
+      observedToolResults: [
+        {
+          toolName: 'get_weather',
+          status: 'SUCCESS',
+          result: null,
+        },
+      ],
+    },
+  },
+  {
     id: 'disambiguation_internal_preference',
     expectedAction: 'tool_calls',
     input: {

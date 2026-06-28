@@ -1,6 +1,7 @@
 import { generateCarBenchReliabilityDecision, type CarBenchAgentInput, type CarBenchAgentDecision, type CarBenchTool } from './car-bench-reliability-agent';
 import { runMpaeDecision, type MpaeDecision, type MpaeTelemetry } from './mpae';
 import { assertTrack2Budget, summarizeTrack2Budget, toA2ATurnMetrics, type Track2CallRecord, type Track2BudgetSnapshot } from './car-bench-track2-budget';
+import type { CarBenchToolResult } from './car-bench-tool-result-validator';
 
 export type CarBenchAdapterState = {
   turn: number;
@@ -29,6 +30,7 @@ export type CarBenchGenerateInput = {
   vehicleContext: CarBenchAgentInput['context'];
   telemetry?: MpaeTelemetry;
   removedPart?: string;
+  observedToolResults?: CarBenchToolResult[];
 };
 
 export function get_init_state(): CarBenchAdapterState {
@@ -113,6 +115,7 @@ export async function generate_next_message(
     availableTools: input.availableTools,
     context: input.vehicleContext,
     removedPart: input.removedPart,
+    observedToolResults: input.observedToolResults,
   });
 
   const calls = [
