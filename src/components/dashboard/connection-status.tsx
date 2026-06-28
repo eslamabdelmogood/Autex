@@ -18,7 +18,7 @@ import {
 interface ConnectionStatusProps {
   isConnected: boolean;
   onToggleConnection: (connected: boolean) => void;
-  onNewReading: (value: number) => void;
+  onNewReading: (value: number, telemetry?: { rpm?: number; temp?: number; ltft?: number; source?: 'hardware' | 'simulation' | 'test' }) => void;
   language?: 'en' | 'ar';
 }
 
@@ -113,7 +113,7 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
             // Match typical OBD-II responses or raw sensor values
             const numericValue = parseFloat(line.replace(/[^0-9.]/g, '').trim());
             if (!isNaN(numericValue)) {
-              onNewReading(numericValue);
+              onNewReading(numericValue, { source: 'hardware' });
             }
           }
         }
@@ -146,7 +146,7 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
 
   const triggerAnomaly = () => {
     const fakeVibration = Math.floor(Math.random() * (110 - 85 + 1)) + 85;
-    onNewReading(fakeVibration);
+    onNewReading(fakeVibration, { source: 'test' });
   };
 
   useEffect(() => {
@@ -155,7 +155,7 @@ export function ConnectionStatus({ isConnected, onToggleConnection, onNewReading
       interval = setInterval(() => {
         const base = 45;
         const noise = (Math.random() - 0.5) * 10;
-        onNewReading(base + noise);
+        onNewReading(base + noise, { source: 'simulation' });
       }, 2000);
     }
     return () => clearInterval(interval);

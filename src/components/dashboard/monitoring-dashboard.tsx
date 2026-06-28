@@ -41,6 +41,7 @@ import { collection, addDoc, query, orderBy, limit, doc } from 'firebase/firesto
 import { useCollection, useDoc } from '@/firebase';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { VisualDiagnosticOutput } from '@/ai/flows/visual-diagnostic-flow';
+import { runMpaeDecision, type MpaeDecision } from '@/lib/mpae';
 
 export type SensorReading = {
   timestamp: number;
@@ -50,11 +51,21 @@ export type SensorReading = {
   ltft?: number;
 };
 
+type TelemetrySource = 'hardware' | 'simulation' | 'test';
+
+type TelemetryPayload = {
+  rpm?: number;
+  temp?: number;
+  ltft?: number;
+  source?: TelemetrySource;
+};
+
 export type AnomalyAlert = DetectAndClassifyAnomaliesOutput & {
   id: string;
   timestamp: number;
   advice?: string;
   trace?: any;
+  mpae?: MpaeDecision;
   part_details?: {
     id: string;
     location: string;
@@ -108,6 +119,29 @@ function TypedLogEntry({ log }: { log: AiLogEntry }) {
 }
 
 const MIN_AI_INTERVAL = 30000;
+const CRITICAL_AI_INTERVAL = 5000;
+
+function createSimulatedTelemetry(value: number): Required<Pick<TelemetryPayload, 'rpm' | 'temp' | 'ltft'>> {
+  const severityBoost = Math.max(0, value - 80);
+
+  return {
+    rpm: Math.round(900 + value * 4 + (Math.random() - 0.5) * 80),
+    temp: Number((82 + value * 0.09 + Math.random() * 1.5).toFixed(1)),
+    ltft: Number(((value > 85 ? 12 : 3) + severityBoost * 0.08 + (Math.random() - 0.5) * 1.5).toFixed(1)),
+  };
+}
+
+function calculateHealthScore(vibration: number, temp: number, ltft: number) {
+  const vibPenalty = Math.max(0, (vibration - 50) * 0.5);
+  const tempPenalty = Math.max(0, (temp - 95) * 1.5);
+  const fuelPenalty = Math.abs(ltft) > 10 ? 10 : 0;
+
+  return Math.round(Math.max(0, Math.min(100, 100 - vibPenalty - tempPenalty - fuelPenalty)));
+}
+
+function isCriticalReading(value: number, ltft: number, maxThreshold: number) {
+  return value > maxThreshold + 10 || Math.abs(ltft) > 15;
+}
 
 export function MonitoringDashboard() {
   const [alerts, setAlerts] = useState<AnomalyAlert[]>([]);
@@ -129,6 +163,7 @@ export function MonitoringDashboard() {
 
   const lastAiCallTimestamp = useRef(0);
   const logScrollRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
   
   const db = useFirestore();
   const { user } = useUser();
@@ -173,11 +208,7 @@ export function MonitoringDashboard() {
 
   useEffect(() => {
     if (currentVibration !== null) {
-      const vibPenalty = Math.max(0, (currentVibration - 50) * 0.5);
-      const tempPenalty = Math.max(0, (temp - 95) * 1.5);
-      const fuelPenalty = Math.abs(ltft) > 10 ? 10 : 0;
-      const newScore = Math.max(0, Math.min(100, 100 - vibPenalty - tempPenalty - fuelPenalty));
-      setHealthScore(Math.round(newScore));
+      setHealthScore(calculateHealthScore(currentVibration, temp, ltft));
     }
   }, [currentVibration, temp, ltft]);
 
@@ -202,37 +233,67 @@ export function MonitoringDashboard() {
     }
   };
 
-  const handleNewReading = useCallback(async (value: number) => {
+  const handleNewReading = useCallback(async (value: number, telemetry: TelemetryPayload = {}) => {
     const timestamp = Date.now();
+    const source = telemetry.source || 'simulation';
+    const simulatedTelemetry = source === 'hardware' ? undefined : createSimulatedTelemetry(value);
+    const newRpm = telemetry.rpm ?? simulatedTelemetry?.rpm ?? 0;
+    const newTemp = telemetry.temp ?? simulatedTelemetry?.temp ?? temp;
+    const newLtft = telemetry.ltft ?? simulatedTelemetry?.ltft ?? ltft;
+
+    const projectedHealthScore = calculateHealthScore(value, newTemp, newLtft);
+
     setCurrentVibration(value);
-    
-    const newRpm = 1200 + (Math.random() - 0.5) * 100;
-    const newTemp = 85 + (value * 0.1) + (Math.random() * 2);
-    const newLtft = (value > 85 ? 12 : 3) + (Math.random() - 0.5) * 2;
     setRpm(newRpm);
     setTemp(newTemp);
     setLtft(newLtft);
 
-    if (db) {
-      addDoc(collection(db, 'readings'), {
-        sensorId: 'OBD-VIB-01',
-        value,
-        rpm: newRpm,
-        temp: newTemp,
-        ltft: newLtft,
-        timestamp,
-        machineId: 'VIN-AUTEX-001'
-      });
+    const mpaeDecision = runMpaeDecision({
+      vibration: value,
+      rpm: newRpm,
+      temp: newTemp,
+      ltft: newLtft,
+      healthScore: projectedHealthScore,
+    }, { horizonSteps: isCriticalReading(value, newLtft, thresholds.max) ? 50 : 20 });
+
+    if (mpaeDecision.recommendedStrategy !== 'monitor') {
+      addAiLog(`MPAE ${mpaeDecision.recommendedStrategy.toUpperCase()} | ${mpaeDecision.rationale}`, 'brain');
     }
 
-    const triggerAi = value > thresholds.max || value < thresholds.min || Math.abs(newLtft) > 10;
+    if (db) {
+      try {
+        await addDoc(collection(db, 'readings'), {
+          sensorId: source === 'hardware' ? 'OBD-LIVE-01' : 'OBD-SIM-01',
+          value,
+          rpm: newRpm,
+          temp: newTemp,
+          ltft: newLtft,
+          source,
+          mpae: mpaeDecision,
+          timestamp,
+          machineId: 'VIN-AUTEX-001'
+        });
+      } catch (error) {
+        console.error('Failed to persist telemetry reading:', error);
+        addAiLog('Black Box Ledger write failed; continuing with local telemetry buffer.', 'error');
+        toast({
+          variant: 'destructive',
+          title: 'Ledger Sync Failed',
+          description: 'Telemetry is still visible locally, but Firestore did not accept this reading.',
+        });
+      }
+    }
+
+    const isCritical = isCriticalReading(value, newLtft, thresholds.max);
+    const triggerAi = value > thresholds.max || value < thresholds.min || Math.abs(newLtft) > 10 || mpaeDecision.maintenancePriority >= 55;
     
     if (triggerAi) {
       const now = Date.now();
-      if (now - lastAiCallTimestamp.current > MIN_AI_INTERVAL) {
+      const requiredInterval = isCritical ? CRITICAL_AI_INTERVAL : MIN_AI_INTERVAL;
+      if (now - lastAiCallTimestamp.current > requiredInterval) {
         setIsAnalyzing(true);
         lastAiCallTimestamp.current = now;
-        addAiLog(`Telemetry Breach. Load: ${value.toFixed(1)}%, LTFT: ${newLtft.toFixed(1)}%. Running ${persona} Strategist.`, 'brain');
+        addAiLog(`${source.toUpperCase()} telemetry breach. Load: ${value.toFixed(1)}%, LTFT: ${newLtft.toFixed(1)}%. Running ${persona} Strategist.`, 'brain');
         try {
           const detectionResult = await detectAndClassifyAnomalies({
             sensorId: 'OBD-RPM-01',
@@ -261,17 +322,24 @@ export function MonitoringDashboard() {
               timestamp,
               advice: explanationResult.recommendation,
               part_details: explanationResult.part_details,
-              trace: { detectionResult, explanationResult }
+              trace: { detectionResult, explanationResult, mpaeDecision },
+              mpae: mpaeDecision
             }, ...prev]);
           }
         } catch (error) {
-          addAiLog("Reasoning depth exceeded. Falling back to local perception.", 'error');
+          console.error('AI diagnostic pipeline failed:', error);
+          addAiLog("Reasoning pipeline failed. Falling back to local perception.", 'error');
+          toast({
+            variant: 'destructive',
+            title: 'AI Diagnostic Failed',
+            description: 'Local thresholds remain active while cloud reasoning recovers.',
+          });
         } finally { 
           setIsAnalyzing(false); 
         }
       }
     }
-  }, [allReadings, thresholds, db, addAiLog, persona]);
+  }, [allReadings, thresholds, db, addAiLog, persona, temp, ltft, toast]);
 
   const toggleLanguage = () => setLanguage(prev => prev === 'en' ? 'ar' : 'en');
 
@@ -347,7 +415,7 @@ export function MonitoringDashboard() {
           </header>
 
           <main className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-4">
-            <KpiCards readings={allReadings} activeAlertsCount={alerts.length} inferenceCount={inferenceCount} healthScore={healthScore} rpm={rpm} temp={temp} language={language} />
+            <KpiCards activeAlertsCount={alerts.length} inferenceCount={inferenceCount} healthScore={healthScore} rpm={rpm} temp={temp} language={language} />
 
             <Tabs defaultValue="monitor" className="space-y-4">
               <div className="w-full overflow-x-auto pb-1">
