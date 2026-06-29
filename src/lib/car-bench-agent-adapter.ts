@@ -2,6 +2,7 @@ import { generateCarBenchReliabilityDecision, type CarBenchAgentInput, type CarB
 import { runMpaeDecision, type MpaeDecision, type MpaeTelemetry } from './mpae';
 import { assertTrack2Budget, summarizeTrack2Budget, toA2ATurnMetrics, type Track2CallRecord, type Track2BudgetSnapshot } from './car-bench-track2-budget';
 import type { CarBenchToolResult } from './car-bench-tool-result-validator';
+import { buildCarBenchVerifierPrompt, CAR_BENCH_SYSTEM_PROMPT } from './car-bench-system-prompt';
 
 export type CarBenchAdapterState = {
   turn: number;
@@ -74,24 +75,35 @@ async function callCerebrasIfConfigured(prompt: string) {
   const apiKey = process.env.CEREBRAS_API_KEY;
   const baseUrl = process.env.CEREBRAS_BASE_URL || 'https://api.cerebras.ai/v1/chat/completions';
   const model = process.env.CEREBRAS_MODEL || 'gpt-oss-120b';
+  const reasoningEffort = process.env.CEREBRAS_REASONING_EFFORT || 'high';
 
   if (!apiKey) return null;
 
-  const response = await fetch(baseUrl, {
+  const body = {
+    model,
+    messages: [
+      { role: 'system', content: CAR_BENCH_SYSTEM_PROMPT },
+      { role: 'user', content: prompt },
+    ],
+    max_tokens: 256,
+    temperature: 0,
+    reasoning_effort: reasoningEffort,
+  };
+
+  const request = (requestBody: Omit<typeof body, 'reasoning_effort'> | typeof body) => fetch(baseUrl, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
       authorization: `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: 'system', content: 'You are a CAR-bench in-car assistant verifier. Be concise and policy-compliant.' },
-        { role: 'user', content: prompt },
-      ],
-      max_tokens: 256,
-    }),
+    body: JSON.stringify(requestBody),
   });
+
+  let response = await request(body);
+  if (!response.ok && response.status === 400) {
+    const { reasoning_effort: _reasoningEffort, ...bodyWithoutReasoningEffort } = body;
+    response = await request(bodyWithoutReasoningEffort);
+  }
 
   if (!response.ok) return null;
   const json = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
@@ -127,7 +139,7 @@ export async function generate_next_message(
   assertTrack2Budget(budgetSnapshot);
   const a2aMetadata = toA2ATurnMetrics(budgetSnapshot);
 
-  const cerebrasText = await callCerebrasIfConfigured(JSON.stringify({
+  const cerebrasText = await callCerebrasIfConfigured(buildCarBenchVerifierPrompt({
     userMessage: input.userMessage,
     reliabilityDecision,
     mpaeDecision,

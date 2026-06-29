@@ -120,3 +120,23 @@ Demo command:
 ```bash
 npm run carbench:adapter
 ```
+
+## Submission configuration for maximum Pass^3 consistency
+
+The strongest submission mode should run the adapter with reasoning enabled and deterministic sampling:
+
+```bash
+export CEREBRAS_API_KEY=...
+export CEREBRAS_MODEL=gpt-oss-120b
+export CEREBRAS_REASONING_EFFORT=high
+```
+
+The adapter sends `temperature: 0` and `reasoning_effort: high` by default, then wraps the model with `CAR_BENCH_SYSTEM_PROMPT` from `src/lib/car-bench-system-prompt.ts`.
+
+The prompt encodes the three highest-impact CAR-bench reliability rules as hard requirements:
+
+1. unavailable required tools must produce refusal/defer, never workaround calls;
+2. missing/null tool-result fields must produce refusal/defer, never inferred vehicle state;
+3. unavailable required parameters must produce refusal/defer, never invalid tool calls.
+
+This is intended to reduce the Pass@3-to-Pass^3 consistency gap by making hallucination and disambiguation behavior stable across repeated trials.
